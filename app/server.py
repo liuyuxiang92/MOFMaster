@@ -5,17 +5,14 @@ FastAPI Server with LangServe - API Entry Point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
-from langchain_core.runnables import RunnableConfig
 
 from app.graph import get_compiled_graph
-from app.state import AgentState
-from app.schema import ChatInput, ChatOutput
 
 # Create FastAPI app
 app = FastAPI(
     title="MOF-Scientist Backend",
     version="1.0.0",
-    description="Scientific workflow agent for Metal-Organic Framework computational chemistry"
+    description="Scientific workflow agent for Metal-Organic Framework computational chemistry",
 )
 
 # Add CORS middleware
@@ -41,8 +38,8 @@ async def root():
             "invoke": "/mof-scientist/invoke",
             "stream": "/mof-scientist/stream",
             "playground": "/mof-scientist/playground",
-            "docs": "/docs"
-        }
+            "docs": "/docs",
+        },
     }
 
 
@@ -63,4 +60,5 @@ add_routes(
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

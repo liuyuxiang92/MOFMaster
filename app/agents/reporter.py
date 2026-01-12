@@ -39,54 +39,56 @@ Generate a professional report answering the user's query.
 def reporter_node(state: AgentState) -> AgentState:
     """
     Reporter Agent - Final node that synthesizes results.
-    
+
     Takes all tool outputs and generates a human-readable
     Markdown report answering the original query.
     """
-    
+
     original_query = state.get("original_query", "")
     plan = state.get("plan", [])
     tool_outputs = state.get("tool_outputs", {})
-    
+
     # If no outputs, return early
     if not tool_outputs:
-        state["messages"].append(AIMessage(
-            content="No results to report - workflow did not complete successfully."
-        ))
+        state["messages"].append(
+            AIMessage(content="No results to report - workflow did not complete successfully.")
+        )
         return state
-    
+
     # Create report prompt
     llm = get_reporter_llm()
-    
+
     # Format tool outputs for readability
     formatted_outputs = _format_tool_outputs(tool_outputs)
-    
-    system_message = SystemMessage(content=REPORTER_SYSTEM_PROMPT.format(
-        original_query=original_query,
-        plan="\n".join(f"{i+1}. {step}" for i, step in enumerate(plan)),
-        tool_outputs=formatted_outputs
-    ))
-    
+
+    system_message = SystemMessage(
+        content=REPORTER_SYSTEM_PROMPT.format(
+            original_query=original_query,
+            plan="\n".join(f"{i+1}. {step}" for i, step in enumerate(plan)),
+            tool_outputs=formatted_outputs,
+        )
+    )
+
     # Generate report
     response = llm.invoke([system_message])
-    
+
     # Add to messages
     state["messages"].append(response)
-    
+
     return state
 
 
 def _format_tool_outputs(tool_outputs: dict) -> str:
     """Format tool outputs as readable text"""
-    
+
     lines = []
     for key, value in tool_outputs.items():
         lines.append(f"\n### {key}")
-        
+
         if isinstance(value, dict):
             for k, v in value.items():
                 lines.append(f"- {k}: {v}")
         else:
             lines.append(f"- {value}")
-    
+
     return "\n".join(lines)

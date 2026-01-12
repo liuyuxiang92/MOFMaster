@@ -4,7 +4,6 @@ Analyzer Agent - Scoping, Context Gathering, and Planning
 
 from pathlib import Path
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate
 
 from app.state import AgentState
 from app.utils.llm import get_analyzer_llm
@@ -13,7 +12,7 @@ from app.utils.llm import get_analyzer_llm
 def load_knowledge_base() -> str:
     """Load the README_KNOWLEDGE.md file"""
     kb_path = Path(__file__).parent.parent.parent / "README_KNOWLEDGE.md"
-    with open(kb_path, 'r') as f:
+    with open(kb_path, "r") as f:
         return f.read()
 
 
@@ -66,72 +65,78 @@ Available tool names:
 def analyzer_node(state: AgentState) -> AgentState:
     """
     Analyzer Agent - First node in the graph.
-    
+
     Reads user input, validates scope, checks for necessary context,
     and generates a plan if ready.
     """
-    
+
     # Load knowledge base
     knowledge_base = load_knowledge_base()
-    
+
     # Get the latest user message
     messages = state["messages"]
     if not messages:
         return state
-    
+
     # Get user query
     user_query = None
     for msg in reversed(messages):
-        if isinstance(msg, HumanMessage) or (hasattr(msg, 'type') and msg.type == 'human'):
+        if isinstance(msg, HumanMessage) or (hasattr(msg, "type") and msg.type == "human"):
             user_query = msg.content
             break
-    
+
     if not user_query:
         return state
-    
+
     # Create prompt
     llm = get_analyzer_llm()
-    
-    system_message = SystemMessage(content=ANALYZER_SYSTEM_PROMPT.format(
-        knowledge_base=knowledge_base
-    ))
-    
+
+    system_message = SystemMessage(
+        content=ANALYZER_SYSTEM_PROMPT.format(knowledge_base=knowledge_base)
+    )
+
     # Invoke LLM
     response = llm.invoke([system_message] + messages)
-    
+
     # Parse response - look for JSON in the content
     content = response.content
-    
+
     # Try to extract JSON from markdown code blocks
     import json
     import re
-    
-    json_match = re.search(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
+
+    json_match = re.search(r"```json\s*(\{.*?\})\s*```", content, re.DOTALL)
     if json_match:
         try:
             parsed = json.loads(json_match.group(1))
-            
+
             if parsed.get("status") == "ready" and "plan" in parsed:
                 # We have a valid plan
                 state["plan"] = parsed["plan"]
                 state["original_query"] = user_query
                 state["current_step"] = 0
-                state["messages"].append(AIMessage(
-                    content=f"I've created a plan to address your request: {', '.join(parsed['plan'])}"
-                ))
+                state["messages"].append(
+                    AIMessage(
+                        content=f"I've created a plan to address your request: {', '.join(parsed['plan'])}"
+                    )
+                )
             elif parsed.get("status") == "need_context":
                 # Need more information
-                state["messages"].append(AIMessage(content=parsed.get("question", "I need more information.")))
+                state["messages"].append(
+                    AIMessage(content=parsed.get("question", "I need more information."))
+                )
             elif parsed.get("status") == "out_of_scope":
                 # Out of scope
-                state["messages"].append(AIMessage(
-                    content=f"I'm sorry, but this request is outside my current capabilities. {parsed.get('reason', '')}"
-                ))
+                state["messages"].append(
+                    AIMessage(
+                        content=f"I'm sorry, but this request is outside my current capabilities. {parsed.get('reason', '')}"
+                    )
+                )
         except json.JSONDecodeError:
             # If JSON parsing fails, just add the response as-is
             state["messages"].append(response)
     else:
         # No JSON found, add response as-is
         state["messages"].append(response)
-    
+
     return state
