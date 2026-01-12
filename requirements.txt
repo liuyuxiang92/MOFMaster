@@ -1,0 +1,14 @@
+langgraph>=0.2.0
+langserve>=0.1.0
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-anthropic>=0.2.0
+fastapi>=0.115.0
+uvicorn>=0.32.0
+pydantic>=2.9.0
+ase>=3.23.0
+pymatgen>=2024.11.0
+python-dotenv>=1.0.0
+numpy>=1.26.0
+sse-starlette>=3.1.0
+

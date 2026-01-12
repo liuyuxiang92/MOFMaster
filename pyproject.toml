@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "mof-backend"
+version = "0.1.0"
+description = "MOF-Scientist Backend: A scientific workflow agent for Metal-Organic Frameworks"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+langgraph = "^0.2.0"
+langserve = "^0.1.0"
+langchain = "^0.3.0"
+langchain-openai = "^0.2.0"
+langchain-anthropic = "^0.2.0"
+fastapi = "^0.115.0"
+uvicorn = "^0.32.0"
+pydantic = "^2.9.0"
+ase = "^3.23.0"
+pymatgen = "^2024.11.0"
+python-dotenv = "^1.0.0"
+numpy = "^1.26.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-asyncio = "^0.24.0"
+black = "^24.8.0"
+ruff = "^0.6.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
