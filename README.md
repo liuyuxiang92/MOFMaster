@@ -13,6 +13,7 @@ The system is built using:
 - **LangServe**: REST API exposure via FastAPI
 - **ASE** (Atomic Simulation Environment): Atomistic simulations
 - **Pymatgen**: Materials science utilities
+- **uv**: Fast Python package installer and dependency manager
 
 ### Features
 
@@ -27,11 +28,11 @@ The system is built using:
 
 1. **Install dependencies**:
 ```bash
-# Using Poetry (recommended)
-poetry install
+# Using uv (recommended)
+uv sync --extra dev
 
-# Or using pip
-pip install -r requirements.txt
+# Or using uv pip (if using an existing virtual environment)
+uv pip install -e ".[dev]"
 ```
 
 2. **Configure environment**:
@@ -42,9 +43,11 @@ cp .env.example .env
 
 3. **Run the server**:
 ```bash
-poetry run python -m app.server
-# Or
-python app/server.py
+# If using uv-managed environment
+uv run python -m app.server
+
+# Or if using your own virtual environment
+python -m app.server
 ```
 
 4. **Access the API**:
@@ -60,6 +63,7 @@ python app/server.py
 
 ### Example Usage
 
+**Using cURL:**
 ```bash
 curl -X POST "http://localhost:8000/mof-scientist/invoke" \
   -H "Content-Type: application/json" \
@@ -72,17 +76,27 @@ curl -X POST "http://localhost:8000/mof-scientist/invoke" \
   }'
 ```
 
+**Quick test script:**
+```bash
+./test_api.sh
+```
+
+📖 **更多 API 使用示例和详细说明，请查看 [API_USAGE.md](API_USAGE.md)**
+
 ### Testing
 
 ```bash
 # Run all tests
-poetry run pytest
+uv run pytest
+
+# Or if using your own virtual environment
+pytest
 
 # Run with coverage
-poetry run pytest --cov=app
+uv run pytest --cov=app
 
 # Run specific test file
-poetry run pytest tests/unit/test_tools.py
+uv run pytest tests/unit/test_tools.py
 ```
 
 ### Project Structure
@@ -100,14 +114,23 @@ mof-backend/
 ├── tests/               # Test suite
 ├── data/                # Local CIF files and results
 ├── README_KNOWLEDGE.md  # Agent knowledge base
-└── pyproject.toml       # Dependencies
+├── pyproject.toml       # Project configuration and dependencies
+└── uv.lock              # Dependency lock file (managed by uv)
 ```
 
 ### Development
 
-- **Linting**: `poetry run black app/ && poetry run ruff check app/`
-- **Type checking**: `poetry run mypy app/`
-- **Format**: `poetry run black app/`
+- **Linting**: `uv run black app/ && uv run ruff check app/`
+- **Type checking**: `uv run mypy app/` (if mypy is installed)
+- **Format**: `uv run black app/`
+- **Debugging with LangSmith**: See [LANGSMITH_DEV_GUIDE.md](LANGSMITH_DEV_GUIDE.md) for detailed instructions on using LangSmith to debug and monitor your workflows
+
+**Note**: If you're using your own virtual environment (e.g., `agent`), you can run these commands directly:
+```bash
+black app/
+ruff check app/
+pytest
+```
 
 ### License
 
