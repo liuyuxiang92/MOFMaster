@@ -7,8 +7,10 @@ import asyncio
 import json
 import logging
 from typing import Dict, Any, List
-from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
+# Bohr Agent SDK imports
+from dp.agent.client.mcp_client import MCPClient
+from dp.agent.server.executor.local_executor import LocalExecutor
+from dp.agent.server.storage.local_storage import LocalStorage
 
 from app.state import AgentState
 
@@ -21,7 +23,8 @@ MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8080/mcp")
 
 async def runner_node(state: AgentState) -> AgentState:
     """
-    Runner Agent - Executes tools via MCP server over Streamable HTTP.
+    Runner Agent - Executes tools via MCP server using bohr-agent-sdk MCPClient.
+    Uses Executor and Storage objects for asynchronous job management.
     """
 
     plan = state.get("plan", [])
@@ -41,33 +44,23 @@ async def runner_node(state: AgentState) -> AgentState:
     try:
         # Determine arguments based on tool and previous outputs
         kwargs = _prepare_tool_args(tool_name, tool_outputs, state)
-        logger.debug(f"Tool arguments prepared for '{tool_name}': {json.dumps(kwargs)}")
+        
+        # Instantiate Executor and Storage objects as required by Bohr SDK
+        # In a real scenario, these could be DispatcherExecutor or OssStorage 
+        # configured via more environment variables.
+        executor = LocalExecutor()
+        storage = LocalStorage()
 
-        # Execute via Streamable HTTP
-        logger.debug(f"Initializing Streamable HTTP client for {MCP_SERVER_URL}...")
-        async with streamable_http_client(MCP_SERVER_URL) as (read, write, _):
-            logger.debug(f"Connected to streamable HTTP endpoint")
-            async with ClientSession(read, write) as session:
-                logger.debug(f"ClientSession created. Initializing session...")
-                await session.initialize()
-                logger.debug(f"MCP session successfully initialized")
-                
-                # Verify server connectivity and tool availability
-                logger.debug(f"Requesting tool list from MCP server...")
-                tools_response = await session.list_tools()
-                available_tools = [t.name for t in tools_response.tools] if hasattr(tools_response, 'tools') else []
-                logger.debug(f"MCP Server Status: Online. Available tools: {available_tools}")
-                
-                if tool_name not in available_tools:
-                    logger.warning(f"Tool '{tool_name}' not found in available tools list!")
-                
-                logger.debug(f"Proceeding to call tool '{tool_name}'...")
-                result = await session.call_tool(tool_name, kwargs)
-                logger.debug(f"Tool call to '{tool_name}' completed")
-                
-                processed_result = _process_mcp_result(result, tool_name)
-                tool_outputs[f"step_{current_step}_{tool_name}"] = processed_result
-                logger.debug(f"Tool output processed and stored for step {current_step}")
+        # Inject objects into kwargs - MCPClient.call_tool(async_mode=True) extracts these
+        kwargs["executor"] = executor
+        kwargs["storage"] = storage
+
+        # Execute via Bohr Agent SDK MCPClient
+        async with MCPClient(MCP_SERVER_URL) as client:
+            # async_mode=True enables the submit -> query -> get_results workflow
+            # The SDK will pass the executor/storage objects to status/result tools
+            result = await client.call_tool(tool_name, kwargs, async_mode=True)
+            tool_outputs[f"step_{current_step}_{tool_name}"] = _process_mcp_result(result, tool_name)
 
     except Exception as e:
         # Store error
@@ -105,11 +98,13 @@ async def runner_node(state: AgentState) -> AgentState:
 
 def _process_mcp_result(result: Any, tool_name: str) -> Dict[str, Any]:
     """Helper to process MCP tool results into standard dictionary format."""
-    # Check for error status
-    is_error = getattr(result, "isError", False)
+    # Bohr SDK uses .isError, but standard MCP uses .is_error; support both
+    is_error = getattr(result, "is_error", False) or getattr(result, "isError", False)
+    
     if is_error:
+        error_text = result.content[0].text if result.content else "Unknown error"
         return {
-            "error": str(result.content),
+            "error": str(error_text),
             "tool_name": tool_name
         }
     
