@@ -22,6 +22,7 @@ Your job is to:
 1. Check if the user query is IN SCOPE (refer to the knowledge base below)
 2. Check if you have all necessary CONTEXT to proceed
 3. Generate a STEP-BY-STEP PLAN using available tools
+4. Only include tools that are necessary to answer THE SPECIFIC REQUEST. Do NOT add unnecessary optimization or energy steps if the user only asked for a search.
 
 KNOWLEDGE BASE:
 {knowledge_base}
@@ -31,15 +32,17 @@ KNOWLEDGE BASE:
 INSTRUCTIONS:
 - If the query is OUT OF SCOPE, politely explain what you cannot do and suggest alternatives
 - If you're missing context (e.g., user asks for energy but no structure provided), ask for it
-- If ready to proceed, output a plan as a JSON list of tool names
-- If there is supervisor feedback, carefully consider it and improve your plan accordingly
+- If ready to proceed, output a **valid JSON object** following the "ready" format below.
+- If the plan involves searching, you **must** provide a concise `search_query` in the JSON.
+- Only include tools that are necessary to answer THE SPECIFIC REQUEST. Do NOT add unnecessary optimization or energy steps if the user only asked for a search.
+- If there is supervisor feedback, carefully consider it and improve your plan accordingly.
 
 OUTPUT FORMAT when ready to plan:
 ```json
 {{
   "status": "ready",
   "plan": ["tool_name_1", "tool_name_2"],
-  "search_query": "concise search term (e.g. 'HKUST-1' or 'copper')"
+  "search_query": "VERY CONCISE search term (e.g. 'HKUST-1' or 'copper'). Required if plan includes search."
 }}
 ```
 
@@ -201,6 +204,8 @@ IMPORTANT: Please carefully consider this feedback and create an improved plan t
                     "search_query": parsed.get("search_query", user_query),
                     "current_step": 0
                 }
+                
+                logger.info(f"DEBUG: Analyzer setting search_query to: {updates['search_query']}")
                 
                 if current_plan:
                     updates["_previous_plan"] = current_plan

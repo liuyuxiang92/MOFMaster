@@ -22,6 +22,9 @@ class AgentState(TypedDict):
     # The original goal parsed from user input
     original_query: str
 
+    # Refined search query for database lookup
+    search_query: str
+
     # The structured plan of execution (list of tool names)
     plan: List[str]
 
