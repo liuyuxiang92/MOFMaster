@@ -6,8 +6,10 @@ import os
 import asyncio
 import json
 from typing import Dict, Any, List
-from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
+# Bohr Agent SDK imports
+from dp.agent.client.mcp_client import MCPClient
+from dp.agent.server.executor.local_executor import LocalExecutor
+from dp.agent.server.storage.local_storage import LocalStorage
 
 from app.state import AgentState
 
@@ -17,7 +19,8 @@ MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8080/mcp")
 
 async def runner_node(state: AgentState) -> AgentState:
     """
-    Runner Agent - Executes tools via MCP server over Streamable HTTP.
+    Runner Agent - Executes tools via MCP server using bohr-agent-sdk MCPClient.
+    Uses Executor and Storage objects for asynchronous job management.
     """
 
     plan = state.get("plan", [])
@@ -34,13 +37,23 @@ async def runner_node(state: AgentState) -> AgentState:
     try:
         # Determine arguments based on tool and previous outputs
         kwargs = _prepare_tool_args(tool_name, tool_outputs, state)
+        
+        # Instantiate Executor and Storage objects as required by Bohr SDK
+        # In a real scenario, these could be DispatcherExecutor or OssStorage 
+        # configured via more environment variables.
+        executor = LocalExecutor()
+        storage = LocalStorage()
 
-        # Execute via Streamable HTTP
-        async with streamable_http_client(MCP_SERVER_URL) as (read, write, _):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                result = await session.call_tool(tool_name, kwargs)
-                tool_outputs[f"step_{current_step}_{tool_name}"] = _process_mcp_result(result, tool_name)
+        # Inject objects into kwargs - MCPClient.call_tool(async_mode=True) extracts these
+        kwargs["executor"] = executor
+        kwargs["storage"] = storage
+
+        # Execute via Bohr Agent SDK MCPClient
+        async with MCPClient(MCP_SERVER_URL) as client:
+            # async_mode=True enables the submit -> query -> get_results workflow
+            # The SDK will pass the executor/storage objects to status/result tools
+            result = await client.call_tool(tool_name, kwargs, async_mode=True)
+            tool_outputs[f"step_{current_step}_{tool_name}"] = _process_mcp_result(result, tool_name)
 
     except Exception as e:
         # Store error
@@ -55,9 +68,13 @@ async def runner_node(state: AgentState) -> AgentState:
 
 def _process_mcp_result(result: Any, tool_name: str) -> Dict[str, Any]:
     """Helper to process MCP tool results into standard dictionary format."""
-    if result.is_error:
+    # Bohr SDK uses .isError, but standard MCP uses .is_error; support both
+    is_error = getattr(result, "is_error", False) or getattr(result, "isError", False)
+    
+    if is_error:
+        error_text = result.content[0].text if result.content else "Unknown error"
         return {
-            "error": str(result.content),
+            "error": str(error_text),
             "tool_name": tool_name
         }
     
