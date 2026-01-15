@@ -200,10 +200,13 @@ IMPORTANT: Please carefully consider this feedback and create an improved plan t
                 updates = {
                     "messages": [new_message],
                     "plan": new_plan,
-                    "original_query": user_query,
                     "search_query": parsed.get("search_query", user_query),
                     "current_step": 0
                 }
+                
+                # Only set original_query if not already set (avoid overwriting on re-planning)
+                if not state.get("original_query"):
+                    updates["original_query"] = user_query
                 
                 logger.info(f"DEBUG: Analyzer setting search_query to: {updates['search_query']}")
                 
