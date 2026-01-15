@@ -148,9 +148,7 @@ def _prepare_tool_args(
 
     # 1. Search tools
     if tool_name == "search_mofs":
-        # Use refined search_query from analyzer if available
-        search_query = state.get("search_query", original_query)
-        return {"query": search_query, "query_string": search_query}
+        return {"query": original_query, "query_string": original_query}
 
     # 2. Optimization tools
     elif tool_name == "optimize_structure":
