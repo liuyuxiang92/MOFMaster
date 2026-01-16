@@ -9,8 +9,6 @@ import logging
 from typing import Dict, Any, List
 # Bohr Agent SDK imports
 from dp.agent.client.mcp_client import MCPClient
-from dp.agent.server.executor.local_executor import LocalExecutor
-from dp.agent.server.storage.local_storage import LocalStorage
 
 from app.state import AgentState
 
@@ -18,7 +16,7 @@ from app.state import AgentState
 logger = logging.getLogger(__name__)
 
 # Configuration for MCP server connection
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8080/mcp")
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://127.0.0.1:50001/mcp")
 
 
 async def runner_node(state: AgentState) -> AgentState:
@@ -45,20 +43,20 @@ async def runner_node(state: AgentState) -> AgentState:
         # Determine arguments based on tool and previous outputs
         kwargs = _prepare_tool_args(tool_name, tool_outputs, state)
         
-        # Instantiate Executor and Storage objects as required by Bohr SDK
-        # In a real scenario, these could be DispatcherExecutor or OssStorage 
-        # configured via more environment variables.
-        executor = LocalExecutor()
-        storage = LocalStorage()
+        # Executor and Storage configuration as expected by Bohr Agent SDK.
+        # These are passed as dicts because they are serialized over MCP (JSON).
+        # "type" maps to the drivers defined in the SDK (e.g., "local", "dispatcher").
+        executor_config = {"type": "local"}
+        storage_config = {"type": "local"}
 
-        # Inject objects into kwargs - MCPClient.call_tool(async_mode=True) extracts these
-        kwargs["executor"] = executor
-        kwargs["storage"] = storage
+        # Inject configurations into kwargs - MCPClient.call_tool(async_mode=True) extracts these.
+        kwargs["executor"] = executor_config
+        kwargs["storage"] = storage_config
 
         # Execute via Bohr Agent SDK MCPClient
         async with MCPClient(MCP_SERVER_URL) as client:
             # async_mode=True enables the submit -> query -> get_results workflow
-            # The SDK will pass the executor/storage objects to status/result tools
+            logger.debug(f"Runner Agent: Calling tool '{tool_name}' with arguments: {kwargs}")
             result = await client.call_tool(tool_name, kwargs, async_mode=True)
             tool_outputs[f"step_{current_step}_{tool_name}"] = _process_mcp_result(result, tool_name)
 
