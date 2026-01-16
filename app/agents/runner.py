@@ -18,7 +18,7 @@ from app.state import AgentState
 logger = logging.getLogger(__name__)
 
 # Configuration for MCP server connection
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8080/mcp")
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://fmws1368103.bohrium.tech:50001/mcp")
 
 
 async def runner_node(state: AgentState) -> AgentState:
