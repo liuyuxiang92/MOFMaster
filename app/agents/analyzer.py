@@ -33,7 +33,7 @@ KNOWLEDGE BASE (authoritative description of role, tools, and workflows):
 {feedback_section}
 
 PLANNING GUIDELINES:
-- For simple tasks, a single tool call may be sufficient. For complex tasks, think in terms of multi-step workflows.
+- For simple tasks, a single-step plan may be sufficient. For complex tasks, think in terms of multi-step workflows.
 - Follow the default order of operations when appropriate:
     - structure acquisition → geometry optimization → energy/force calculation.
 - It is acceptable to:
