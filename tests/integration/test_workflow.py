@@ -35,12 +35,12 @@ async def test_runner_search_execution():
 
 @pytest.mark.asyncio
 async def test_runner_multi_step_workflow():
-    """Test runner with multi-step workflow via MCP (search -> optimize)"""
+    """Test runner with multi-step workflow via MCP (search -> parse -> optimize)"""
     # Create state
     state: AgentState = {
         "messages": [HumanMessage(content="Find and optimize HKUST-1")],
         "original_query": "HKUST-1",
-        "plan": ["search_mofs", "optimize_structure"],
+        "plan": ["search_mofs", "parse_structure", "optimize_geometry"],
         "current_step": 0,
         "tool_outputs": {},
         "review_feedback": "",
@@ -55,8 +55,13 @@ async def test_runner_multi_step_workflow():
     # Execute step 2: optimize
     state = await runner_node(state)
     assert state["current_step"] == 2
-    assert "step_1_optimize_structure" in state["tool_outputs"]
+    assert "step_1_parse_structure" in state["tool_outputs"]
+
+    # Execute step 3: optimize
+    state = await runner_node(state)
+    assert state["current_step"] == 3
+    assert "step_2_optimize_geometry" in state["tool_outputs"]
 
     # Check optimization result
-    opt_result = state["tool_outputs"]["step_1_optimize_structure"]
+    opt_result = state["tool_outputs"]["step_2_optimize_geometry"]
     assert "Successfully" in str(opt_result)

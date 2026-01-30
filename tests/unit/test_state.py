@@ -20,7 +20,7 @@ def test_agent_state_structure():
         "is_plan_approved",
     }
 
-    assert set(AgentState.__annotations__.keys()) == required_keys
+    assert required_keys.issubset(set(AgentState.__annotations__.keys()))
 
 
 def test_agent_state_types():

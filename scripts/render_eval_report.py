@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-TOOLS = ["search_mofs", "optimize_structure", "calculate_energy"]
+TOOLS = ["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"]
 
 
 @dataclass(frozen=True)
@@ -113,7 +113,7 @@ def _extract_executed_workflow(raw: dict[str, Any]) -> list[str] | None:
 
 
 def _parse_expected_plan(expectation: str) -> list[str] | None:
-    # Try bracket list first: [search_mofs, optimize_structure]
+    # Try bracket list first: [search_mofs, optimize_geometry]
     m = re.search(r"\[(.*?)\]", expectation)
     if m:
         inner = m.group(1)
@@ -122,9 +122,9 @@ def _parse_expected_plan(expectation: str) -> list[str] | None:
         if tools:
             return tools
 
-    # Try arrow sequence: search_mofs -> optimize_structure -> calculate_energy
+    # Try arrow sequence: search_mofs -> parse_structure -> optimize_geometry -> static_calculation
     if "->" in expectation:
-        found = re.findall(r"\b(?:search_mofs|optimize_structure|calculate_energy)\b", expectation)
+        found = re.findall(r"\b(?:search_mofs|parse_structure|optimize_geometry|static_calculation)\b", expectation)
         if found:
             return found
 

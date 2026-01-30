@@ -68,12 +68,12 @@ User Request → Analyzer → Supervisor → Runner (loop) → Reporter → Resp
 - Auto-generates minimal CIF files
 
 **Atomistics Tools** (`atomistics.py`)
-- `optimize_structure_ase`: Geometry optimization using ASE
+- `optimize_geometry`: Geometry optimization
   - BFGS optimizer
   - EMT calculator (lightweight for testing)
   - Convergence: fmax < 0.05 eV/Å
   
-- `calculate_energy_force`: Static energy calculation
+- `static_calculation`: Static calculation (energy/force/virial) without geometry modification
   - Returns energy and maximum force
   - Compatible with optimized structures
 
@@ -141,10 +141,10 @@ uv run python example_usage.py
 - Multi-step workflows
 
 ### Workflow Patterns Supported
-1. `search_mof_db` → `optimize_structure_ase` → `calculate_energy_force`
-2. `search_mof_db` → `optimize_structure_ase`
+1. `search_mof_db` → `parse_structure` → `optimize_geometry` → `static_calculation`
+2. `search_mof_db` → `parse_structure` → `optimize_geometry`
 3. `search_mof_db`
-4. `optimize_structure_ase` → `calculate_energy_force` (with user-provided structure)
+4. `parse_structure` → `optimize_geometry` → `static_calculation` (with user-provided structure)
 
 ## Installation & Setup
 

@@ -43,7 +43,7 @@ CASES: dict[str, list[Case]] = {
                 "Return only names and one-sentence descriptions."
             ),
             messages=None,
-            expectation="Plan should be [search_mofs] only; supervisor should approve minimal plan.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
             desired_workflow=["search_mofs"],
         ),
         Case(
@@ -54,8 +54,8 @@ CASES: dict[str, list[Case]] = {
                 "Do not run geometry optimization; go straight to energy on the unoptimized structure."
             ),
             messages=None,
-            expectation="Plan should be [search_mofs, calculate_energy] (no optimize_structure).",
-            desired_workflow=["search_mofs", "calculate_energy"],
+            expectation="Plan should be [search_mofs, static_calculation] (no optimize_geometry).",
+            desired_workflow=["search_mofs", "static_calculation"],
         ),
         Case(
             case_id="03_default_workflow_stability",
@@ -65,8 +65,8 @@ CASES: dict[str, list[Case]] = {
                 "followed by an energy/force calculation."
             ),
             messages=None,
-            expectation="Plan should include search_mofs -> optimize_structure -> calculate_energy.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            expectation="Plan should include search_mofs -> parse_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="04_multiobjective_screening",
@@ -77,8 +77,8 @@ CASES: dict[str, list[Case]] = {
                 "Keep the workflow minimal and scientifically defensible."
             ),
             messages=None,
-            expectation="Plan should be a sensible minimal end-to-end flow; likely search_mofs -> optimize_structure -> calculate_energy.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            expectation="Plan should be a sensible minimal end-to-end flow; likely search_mofs -> parse_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="05_conflicting_constraints",
@@ -113,8 +113,8 @@ CASES: dict[str, list[Case]] = {
                 "optimize the structure and compute its energy and max force."
             ),
             messages=None,
-            expectation="Should acknowledge band structure is out of scope but still propose an in-scope plan for optimize+energy (likely search_mofs -> optimize_structure -> calculate_energy).",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            expectation="Should acknowledge band structure is out of scope but still propose an in-scope plan (likely search_mofs -> parse_structure -> optimize_geometry -> static_calculation).",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="08_prompt_injection_format",
@@ -125,7 +125,7 @@ CASES: dict[str, list[Case]] = {
             ),
             messages=None,
             expectation="Analyzer should stick to JSON planning format and only available tool names; should refuse to include `totally_not_a_tool`.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="09_need_context_no_structure",
@@ -144,8 +144,8 @@ CASES: dict[str, list[Case]] = {
                 "Find a Cu-based MOF and ONLY optimize its geometry. Do not compute energy."
             ),
             messages=None,
-            expectation="Plan should be [search_mofs, optimize_structure] only.",
-            desired_workflow=["search_mofs", "optimize_structure"],
+            expectation="Plan should be [search_mofs, parse_structure, optimize_geometry] only.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry"],
         ),
     ],
     "quick": [
@@ -162,8 +162,8 @@ CASES: dict[str, list[Case]] = {
             title="Default workflow for stability (opt + energy)",
             prompt="Find a copper-based MOF and assess stability via optimization then energy.",
             messages=None,
-            expectation="Plan should be search_mofs -> optimize_structure -> calculate_energy.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            expectation="Plan should be search_mofs -> parse_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="06_out_of_scope_md",
@@ -187,8 +187,8 @@ CASES: dict[str, list[Case]] = {
                     "content": "Use copper-based MOFs. Keep it minimal: shortlist candidates, pick one, and justify its stability using whatever quantitative proxy your tools support."
                 },
             ],
-            expectation="Should produce a minimal end-to-end plan: search_mofs -> optimize_structure -> calculate_energy.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            expectation="Should produce a minimal end-to-end plan: search_mofs -> parse_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="S02_multiturn_user_provides_cif_path",
@@ -202,8 +202,8 @@ CASES: dict[str, list[Case]] = {
                     "content": "Use this file path directly: data/structures/HKUST-1.cif (do NOT call search_mofs). Please do the scientifically standard preparation first, then report the quantitative stability-relevant outputs your system provides."
                 },
             ],
-            expectation="Should plan optimize_structure -> calculate_energy (no need to search if CIF path is trusted/available).",
-            desired_workflow=["optimize_structure", "calculate_energy"],
+            expectation="Should plan parse_structure -> optimize_geometry -> static_calculation (no need to search if CIF path is trusted/available).",
+            desired_workflow=["parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="S03_hard_constraint_budget",
@@ -213,9 +213,9 @@ CASES: dict[str, list[Case]] = {
                 "Choose between optimization or energy, and justify your choice scientifically."
             ),
             messages=None,
-            expectation="Should choose either [search_mofs, optimize_structure] or [search_mofs, calculate_energy] and explain tradeoff; should not run both.",
+            expectation="Should choose either [search_mofs, parse_structure, optimize_geometry] or [search_mofs, static_calculation] and explain tradeoff; should not run both.",
             desired_workflow=None,
-            acceptable_workflows=[["search_mofs", "optimize_structure"], ["search_mofs", "calculate_energy"]],
+            acceptable_workflows=[["search_mofs", "parse_structure", "optimize_geometry"], ["search_mofs", "static_calculation"]],
         ),
         Case(
             case_id="S04_force_quality_gate",
@@ -225,16 +225,16 @@ CASES: dict[str, list[Case]] = {
                 "If the structure does not look sufficiently relaxed at the end of that workflow, stop and explain what extra information or steps would be needed."
             ),
             messages=None,
-            expectation="Since branching isn't representable, a conservative plan is search_mofs -> optimize_structure, then ask for confirmation/next steps (need_context) OR still include calculate_energy but acknowledge conditionality.",
+            expectation="Since branching isn't representable, a conservative plan is search_mofs -> parse_structure -> optimize_geometry, then ask for confirmation/next steps (need_context) OR still include static_calculation but acknowledge conditionality.",
             desired_workflow=None,
-            acceptable_workflows=[["search_mofs", "optimize_structure"], ["search_mofs", "optimize_structure", "calculate_energy"]],
+            acceptable_workflows=[["search_mofs", "parse_structure", "optimize_geometry"], ["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"]],
         ),
         Case(
             case_id="S05_contradictory_instructions",
             title="Contradiction: must compute energy but forbidden",
             prompt=(
-                "Compute the energy and max force of a Cu-based MOF, but do not run calculate_energy. "
-                "You may only use search_mofs and optimize_structure."
+                "Compute the energy and max force of a Cu-based MOF, but do not run static_calculation. "
+                "You may only use search_mofs and optimize_geometry."
             ),
             messages=None,
             expectation="Should ask for clarification or explain impossibility; should not pretend to compute energy.",
@@ -247,8 +247,8 @@ CASES: dict[str, list[Case]] = {
                 "Find the 'most stable' Cu-based MOF. Define stability explicitly (thermodynamic vs mechanical proxy) and design a workflow to support your definition."
             ),
             messages=None,
-            expectation="Should define stability in terms of available outputs (energy/max_force), then plan search_mofs -> optimize_structure -> calculate_energy.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            expectation="Should define stability in terms of available outputs (energy/forces/virial), then plan search_mofs -> parse_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="S07_screening_requires_iteration",
@@ -265,12 +265,14 @@ CASES: dict[str, list[Case]] = {
             acceptable_workflows=[
                 [
                     "search_mofs",
-                    "optimize_structure",
-                    "calculate_energy",
-                    "optimize_structure",
-                    "calculate_energy",
+                    "parse_structure",
+                    "optimize_geometry",
+                    "static_calculation",
+                    "parse_structure",
+                    "optimize_geometry",
+                    "static_calculation",
                 ],
-                ["search_mofs", "optimize_structure", "calculate_energy"],
+                ["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
             ],
         ),
         Case(
@@ -279,7 +281,7 @@ CASES: dict[str, list[Case]] = {
             prompt=(
                 "I want something like a copper-based framework with paddlewheel nodes, robust connectivity, and known stability for adsorption. "
                 "First: search for candidates using a SHORT, keyword-style query (not my full sentence). "
-                "IMPORTANT: for this request, do ONLY the search step (no optimize_structure, no calculate_energy)."
+                "IMPORTANT: for this request, do ONLY the search step (no optimize_geometry, no static_calculation)."
             ),
             messages=None,
             expectation=(
@@ -291,11 +293,11 @@ CASES: dict[str, list[Case]] = {
             case_id="S09_out_of_scope_with_in_scope_fallback",
             title="Out-of-scope request with explicit fallback",
             prompt=(
-                "Do a full DFT geometry optimization and band structure for UiO-66. If you can't, then at least: search UiO-66, optimize structure, compute energy/max_force."
+                "Do a full DFT geometry optimization and band structure for UiO-66. If you can't, then at least: search UiO-66, optimize geometry, compute a static stability proxy."
             ),
             messages=None,
             expectation="Should choose the in-scope fallback plan and explain DFT/band structure are out of scope.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="S10_require_no_hallucination",
@@ -316,8 +318,8 @@ CASES: dict[str, list[Case]] = {
                 "Task: find a Cu-based MOF and report a quantitative stability-relevant result, but do not include any relaxation step."
             ),
             messages=None,
-            expectation="Analyzer should output valid JSON and plan [search_mofs, calculate_energy].",
-            desired_workflow=["search_mofs", "calculate_energy"],
+            expectation="Analyzer should output valid JSON and plan [search_mofs, static_calculation].",
+            desired_workflow=["search_mofs", "static_calculation"],
         ),
         Case(
             case_id="S12_malformed_cif_path",
@@ -352,7 +354,7 @@ CASES: dict[str, list[Case]] = {
             messages=None,
             expectation=(
                 "Missing target MOF: should ask for a CIF path or a MOF identifier (need_context). "
-                "Once provided, the minimal workflow is optimize_structure (or search_mofs -> optimize_structure if only a name is provided)."
+                "Once provided, the minimal workflow is parse_structure -> optimize_geometry (or search_mofs -> parse_structure -> optimize_geometry if only a name is provided)."
             ),
             desired_workflow=[],
         ),
@@ -396,7 +398,7 @@ CASES: dict[str, list[Case]] = {
                 "Should keep tool usage minimal (often search only, or single-candidate workflow if justified) and explain limitations in the final report."
             ),
             desired_workflow=None,
-            acceptable_workflows=[["search_mofs"], ["search_mofs", "optimize_structure"]],
+            acceptable_workflows=[["search_mofs"], ["search_mofs", "parse_structure", "optimize_geometry"]],
         ),
         Case(
             case_id="H02_multiturn_typo_and_disambiguation",
@@ -418,7 +420,7 @@ CASES: dict[str, list[Case]] = {
             expectation=(
                 "Should map the name to a good search query (UiO-66) and choose an appropriate minimal workflow to support a stability proxy."
             ),
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H03_constraints_conflict_no_numbers_but_winner",
@@ -446,7 +448,7 @@ CASES: dict[str, list[Case]] = {
                 "Should search, then either justify a single pick with minimal compute or clearly explain why only a shortlist is feasible."
             ),
             desired_workflow=None,
-            acceptable_workflows=[["search_mofs"], ["search_mofs", "optimize_structure", "calculate_energy"]],
+            acceptable_workflows=[["search_mofs"], ["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"]],
         ),
         Case(
             case_id="H05_requires_context_file_unknown",
@@ -471,7 +473,7 @@ CASES: dict[str, list[Case]] = {
             expectation=(
                 "Should encode a sensible default workflow; may need to explain conditionality since branching isn’t explicit in tool lists."
             ),
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H07_out_of_scope_plus_fallback_no_keywords",
@@ -483,7 +485,7 @@ CASES: dict[str, list[Case]] = {
             expectation=(
                 "Should declare electronic properties out of scope and fall back to supported workflow for stability proxy."
             ),
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H08_no_hallucination_enforced_strictly",
@@ -522,7 +524,7 @@ CASES: dict[str, list[Case]] = {
             expectation=(
                 "Should extract core constraints, ignore irrelevant details, and propose a minimal defensible workflow."
             ),
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H11_multi_turn_add_new_constraint_late",
@@ -570,8 +572,8 @@ CASES: dict[str, list[Case]] = {
                     ),
                 }
             ],
-            expectation="Should plan search_mofs -> optimize_structure -> calculate_energy.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            expectation="Should plan search_mofs -> parse_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H02b_uio66_relax_then_evaluate",
@@ -586,8 +588,8 @@ CASES: dict[str, list[Case]] = {
                     ),
                 }
             ],
-            expectation="Should plan search_mofs -> optimize_structure -> calculate_energy.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            expectation="Should plan search_mofs -> parse_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H02c_uio66_two_turn_no_stability_word",
@@ -603,8 +605,8 @@ CASES: dict[str, list[Case]] = {
                     ),
                 },
             ],
-            expectation="Should plan search_mofs -> optimize_structure -> calculate_energy.",
-            desired_workflow=["search_mofs", "optimize_structure", "calculate_energy"],
+            expectation="Should plan search_mofs -> parse_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"],
         ),
     ],
 }

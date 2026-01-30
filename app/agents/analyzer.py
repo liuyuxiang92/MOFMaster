@@ -35,10 +35,10 @@ KNOWLEDGE BASE (authoritative description of role, tools, and workflows):
 PLANNING GUIDELINES:
 - Think in terms of workflows, not single tool calls.
 - Follow the default order of operations when appropriate:
-    - structure acquisition → geometry optimization → energy/force calculation.
+    - structure acquisition → structure parsing → geometry optimization → static calculation.
 - It is acceptable to:
     - Use only `search_mofs` when the user only wants candidates or a quick lookup.
-    - Use `optimize_structure` → `calculate_energy` when the user provides a specific structure.
+    - Use `parse_structure` → `optimize_geometry` → `static_calculation` when the user provides a specific structure.
     - Perform screening workflows over multiple candidates (e.g., search → filter → optimize/energy for a small subset).
 - Do NOT add expensive steps (especially energy calculations) if the user explicitly requested to avoid them.
 - If the user’s intent is ambiguous (e.g., "find a stable Cu-based MOF"), you may include optimization and/or energy calculations as part of a reasonable scientific workflow.
@@ -79,8 +79,9 @@ OUTPUT FORMAT when the request is out of scope:
 
 Available tool names (must match exactly):
 - search_mofs
-- optimize_structure
-- calculate_energy
+- parse_structure
+- optimize_geometry
+- static_calculation
 """
 
 

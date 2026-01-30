@@ -144,35 +144,32 @@ def _prepare_tool_args(
     if tool_name == "search_mofs":
         return {"query": original_query, "query_string": original_query}
 
-    # 2. Optimization tools
-    elif tool_name == "optimize_structure":
-        # Try to find a CIF path
-        cif_path = _find_cif_filepath(tool_outputs)
-        
-        # Try to find a MOF name as fallback
-        mof_name = "Unknown MOF"
-        for key, val in tool_outputs.items():
-            if isinstance(val, list) and len(val) > 0:
-                if isinstance(val[0], dict):
-                    mof_name = val[0].get("name") or val[0].get("mof_name") or mof_name
-            elif isinstance(val, dict):
-                mof_name = val.get("name") or val.get("mof_name") or mof_name
-        
-        return {
-            "cif_filepath": cif_path,
-            "filepath": cif_path,
-            "name": mof_name,
-            "mof_name": mof_name
-        }
-
-    # 3. Energy tools
-    elif tool_name == "calculate_energy":
+    # 2. Parse structure tool
+    elif tool_name == "parse_structure":
+        # Prefer any CIF path we can find from prior tool outputs.
         cif_path = _find_cif_filepath(tool_outputs, prefer_optimized=True)
-        return {
-            "cif_filepath": cif_path,
-            "filepath": cif_path,
-            "data": cif_path
-        }
+
+        # If the user typed a file path in the query, prefer that.
+        user_path = _extract_existing_structure_path(original_query)
+        data = user_path or cif_path or original_query
+        return {"data": data}
+
+    # 3. Optimization tools
+    elif tool_name == "optimize_geometry":
+        atoms_dict = _find_latest_atoms_dict(tool_outputs, prefer_optimized=False)
+        payload: Dict[str, Any] = {}
+        if atoms_dict is not None:
+            payload["atoms_dict"] = atoms_dict
+        return payload
+
+    # 4. Static energy/force tools
+    elif tool_name == "static_calculation":
+        # Prefer optimized atoms if available, else parsed atoms.
+        atoms_dict = _find_latest_atoms_dict(tool_outputs, prefer_optimized=True)
+        payload: Dict[str, Any] = {}
+        if atoms_dict is not None:
+            payload["atoms_dict"] = atoms_dict
+        return payload
 
     else:
         return {}
@@ -209,3 +206,37 @@ def _find_cif_filepath(tool_outputs: Dict[str, Any], prefer_optimized: bool = Fa
         return optimized_path
 
     return optimized_path or original_path
+
+
+def _find_latest_atoms_dict(tool_outputs: Dict[str, Any], prefer_optimized: bool) -> Any:
+    """Find the most recent atoms_dict from parse/optimization outputs."""
+    # Sort keys to follow step order (step_0_..., step_1_...)
+    for key in sorted(tool_outputs.keys(), reverse=True):
+        output = tool_outputs[key]
+        if not isinstance(output, dict):
+            continue
+
+        if prefer_optimized and "optimized_atoms_dict" in output and output.get("optimized_atoms_dict"):
+            return output.get("optimized_atoms_dict")
+        if "atoms_dict" in output and output.get("atoms_dict"):
+            return output.get("atoms_dict")
+
+    return None
+
+
+def _extract_existing_structure_path(text: str) -> str | None:
+    """Extract an existing structure file path from user text (best-effort)."""
+    import re
+    from pathlib import Path
+
+    # Common structure formats we support downstream
+    pattern = r"(/[^\s]+\.(?:cif|xyz|vasp|poscar|POSCAR))"
+    match = re.search(pattern, text)
+    if not match:
+        return None
+    candidate = match.group(1)
+    try:
+        p = Path(candidate)
+        return str(p) if p.exists() else None
+    except Exception:
+        return None

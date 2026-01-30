@@ -21,14 +21,16 @@ Your job is to ensure the plan is:
 
 SCIENTIFIC RULES (derived from the knowledge base):
 - Structure acquisition (`search_mofs` or user-provided CIF) must happen before any operations that require a structure.
-- Geometry optimization (`optimize_structure`) should typically precede energy/force calculations for meaningful results, unless the user explicitly wants a quick, non-optimized estimate.
-- Energy calculations (`calculate_energy`) are appropriate when the user asks about energy, stability, or forces, or when they implicitly want "stability" comparisons.
+- Structure parsing (`parse_structure`) should occur before any operation that requires an ASE Atoms representation.
+- Geometry optimization (`optimize_geometry`) should typically precede static energy/force calculations for meaningful results, unless the user explicitly wants a quick, non-optimized estimate.
+- Static calculation (`static_calculation`) is appropriate when the user asks about energy, stability, forces, or virial, or when they implicitly want "stability" comparisons.
 - If the user explicitly states they only want search or optimization (and *no* energies), additional energy steps should be rejected.
 
 AVAILABLE TOOLS (you are only reviewing their ordering and necessity):
 - search_mofs: Search for MOF structures.
-- optimize_structure: Optimize geometry.
-- calculate_energy: Calculate energy and forces.
+- parse_structure: Parse/validate a structure into ASE Atoms (dict).
+- optimize_geometry: Optimize geometry.
+- static_calculation: Compute static energy/forces/virial.
 
 {revision_context}
 
