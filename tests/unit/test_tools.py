@@ -38,14 +38,13 @@ def test_write_and_read_cif():
     test_file.unlink()
 
 
-def test_prepare_args_search_mofs():
-    """Test that _prepare_tool_args returns correct args for search_mofs"""
+def test_prepare_args_fetch_structure():
+    """Test that _prepare_tool_args returns correct mof_id arg for fetch_structure"""
     from app.agents.runner import _prepare_tool_args
 
-    state = {"original_query": "copper MOF"}
-    args = _prepare_tool_args("search_mofs", {}, state)
-    assert args["query"] == "copper MOF"
-    assert args["query_string"] == "copper MOF"
+    state = {"original_query": "qmof-8b5bb88"}
+    args = _prepare_tool_args("fetch_structure", {}, state)
+    assert args["mof_id"] == "qmof-8b5bb88"
 
 
 def test_prepare_args_predict_bandgap_with_atoms():

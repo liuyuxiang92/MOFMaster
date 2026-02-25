@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-TOOLS = ["search_mofs", "parse_structure", "optimize_geometry", "static_calculation"]
+TOOLS = ["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"]
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,7 @@ def _extract_plan(summary_item: dict[str, Any]) -> list[str] | None:
 
 
 def _extract_executed_workflow(raw: dict[str, Any]) -> list[str] | None:
-    """Infer executed tool order from output.tool_outputs keys like step_0_search_mofs."""
+    """Infer executed tool order from output.tool_outputs keys like step_0_fetch_structure."""
     output = raw.get("output")
     if not isinstance(output, dict):
         return None
@@ -113,7 +113,7 @@ def _extract_executed_workflow(raw: dict[str, Any]) -> list[str] | None:
 
 
 def _parse_expected_plan(expectation: str) -> list[str] | None:
-    # Try bracket list first: [search_mofs, optimize_geometry]
+    # Try bracket list first: [fetch_structure, optimize_geometry]
     m = re.search(r"\[(.*?)\]", expectation)
     if m:
         inner = m.group(1)
@@ -122,9 +122,9 @@ def _parse_expected_plan(expectation: str) -> list[str] | None:
         if tools:
             return tools
 
-    # Try arrow sequence: search_mofs -> parse_structure -> optimize_geometry -> static_calculation
+    # Try arrow sequence: fetch_structure -> parse_structure -> optimize_geometry -> static_calculation
     if "->" in expectation:
-        found = re.findall(r"\b(?:search_mofs|parse_structure|optimize_geometry|static_calculation)\b", expectation)
+        found = re.findall(r"\b(?:fetch_structure|parse_structure|optimize_geometry|static_calculation)\b", expectation)
         if found:
             return found
 

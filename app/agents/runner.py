@@ -140,9 +140,10 @@ def _prepare_tool_args(
     """
     original_query = state.get("original_query", "")
 
-    # 1. Search tools
-    if tool_name == "search_mofs":
-        return {"query": original_query, "query_string": original_query}
+    # 1. Fetch structure tool
+    if tool_name == "fetch_structure":
+        mof_id = _extract_mof_id(original_query) or original_query
+        return {"mof_id": mof_id}
 
     # 2. Parse structure tool
     elif tool_name == "parse_structure":
@@ -230,6 +231,13 @@ def _find_latest_atoms_dict(tool_outputs: Dict[str, Any], prefer_optimized: bool
             return output.get("atoms_dict")
 
     return None
+
+
+def _extract_mof_id(text: str) -> str | None:
+    """Extract a QMOF ID (e.g. qmof-8b5bb88) from user text."""
+    import re
+    match = re.search(r"\bqmof-[a-f0-9]+\b", text, re.IGNORECASE)
+    return match.group(0) if match else None
 
 
 def _extract_existing_structure_path(text: str) -> str | None:

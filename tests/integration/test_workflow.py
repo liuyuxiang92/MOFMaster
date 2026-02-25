@@ -16,7 +16,7 @@ async def test_runner_search_execution():
     state: AgentState = {
         "messages": [HumanMessage(content="HKUST-1")],
         "original_query": "HKUST-1",
-        "plan": ["search_mofs"],
+        "plan": ["fetch_structure"],
         "current_step": 0,
         "tool_outputs": {},
         "review_feedback": "",
@@ -28,8 +28,8 @@ async def test_runner_search_execution():
 
     # Check results
     assert result["current_step"] == 1
-    assert "step_0_search_mofs" in result["tool_outputs"]
-    output = result["tool_outputs"]["step_0_search_mofs"]
+    assert "step_0_fetch_structure" in result["tool_outputs"]
+    output = result["tool_outputs"]["step_0_fetch_structure"]
     assert "HKUST-1" in str(output)
 
 
@@ -40,7 +40,7 @@ async def test_runner_multi_step_workflow():
     state: AgentState = {
         "messages": [HumanMessage(content="Find and optimize HKUST-1")],
         "original_query": "HKUST-1",
-        "plan": ["search_mofs", "parse_structure", "optimize_geometry"],
+        "plan": ["fetch_structure", "parse_structure", "optimize_geometry"],
         "current_step": 0,
         "tool_outputs": {},
         "review_feedback": "",
@@ -50,7 +50,7 @@ async def test_runner_multi_step_workflow():
     # Execute step 1: search
     state = await runner_node(state)
     assert state["current_step"] == 1
-    assert "step_0_search_mofs" in state["tool_outputs"]
+    assert "step_0_fetch_structure" in state["tool_outputs"]
 
     # Execute step 2: optimize
     state = await runner_node(state)

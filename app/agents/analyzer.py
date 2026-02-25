@@ -37,7 +37,7 @@ PLANNING GUIDELINES:
 - Follow the default order of operations when appropriate:
     - structure acquisition → structure parsing → geometry optimization → static calculation.
 - It is acceptable to:
-    - Use only `search_mofs` when the user only wants candidates or a quick lookup.
+    - Use only `fetch_structure` when the user only wants candidates or a quick lookup.
     - Use `parse_structure` → `optimize_geometry` → `static_calculation` when the user provides a specific structure.
     - Perform screening workflows over multiple candidates (e.g., search → filter → optimize/energy for a small subset).
 - Do NOT add expensive steps (especially energy calculations) if the user explicitly requested to avoid them.
@@ -78,7 +78,7 @@ OUTPUT FORMAT when the request is out of scope:
 ```
 
 Available tool names (must match exactly):
-- search_mofs
+- fetch_structure
 - parse_structure
 - optimize_geometry
 - static_calculation
