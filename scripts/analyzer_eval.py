@@ -34,344 +34,254 @@ class Case:
 
 
 CASES: dict[str, list[Case]] = {
-    "full": [
-        Case(
-            case_id="01_search_only_constraint",
-            title="Search-only constraint compliance",
-            prompt=(
-                "List 3 Zr-based UiO-type MOFs. Do NOT run optimization or energy calculations. "
-                "Return only names and one-sentence descriptions."
-            ),
-            messages=None,
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
-            desired_workflow=["fetch_structure"],
-        ),
-        Case(
-            case_id="02_quick_energy_no_opt",
-            title="User explicitly requests non-optimized energy",
-            prompt=(
-                "Find a copper-based MOF candidate and give me a QUICK, non-optimized energy estimate. "
-                "Do not run geometry optimization; go straight to energy on the unoptimized structure."
-            ),
-            messages=None,
-            expectation="Plan should be [fetch_structure, static_calculation] (no optimize_geometry).",
-            desired_workflow=["fetch_structure", "static_calculation"],
-        ),
-        Case(
-            case_id="03_default_workflow_stability",
-            title="Default workflow for stability (opt + energy)",
-            prompt=(
-                "Find a copper-based MOF and assess its relative stability using geometry optimization "
-                "followed by an energy/force calculation."
-            ),
-            messages=None,
-            expectation="Plan should include fetch_structure -> parse_structure -> optimize_geometry -> static_calculation.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
-        ),
-        Case(
-            case_id="04_multiobjective_screening",
-            title="Multiobjective request (screen then compute)",
-            prompt=(
-                "I need a stable Cu-based MOF with large pores for gas storage. "
-                "First search for candidates; then pick a reasonable representative and run optimization + energy/force. "
-                "Keep the workflow minimal and scientifically defensible."
-            ),
-            messages=None,
-            expectation="Plan should be a sensible minimal end-to-end flow; likely fetch_structure -> parse_structure -> optimize_geometry -> static_calculation.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
-        ),
-        Case(
-            case_id="05_conflicting_constraints",
-            title="Conflicting constraints (rank stability but forbid energies)",
-            prompt=(
-                "Rank the stability of Cu-based MOFs, but you are NOT allowed to run energy calculations. "
-                "You can only search structures."
-            ),
-            messages=None,
-            expectation=(
-                "Plan should be [fetch_structure] only and then explain a qualitative/metadata-based ranking (or limitations if results are empty). "
-                "Acceptable alternative: ask for a concrete MOF list/dataset to rank (need_context)."
-            ),
-            desired_workflow=["fetch_structure"],
-            acceptable_workflows=[[], ["fetch_structure"]],
-        ),
-        Case(
-            case_id="06_out_of_scope_md",
-            title="Out-of-scope: molecular dynamics",
-            prompt=(
-                "Run a 10 ns molecular dynamics simulation at 300 K for a Zr-based MOF and report diffusion constants."
-            ),
-            messages=None,
-            expectation="Analyzer should return out_of_scope and suggest supported alternatives (search/opt/energy).",
-            desired_workflow=[],
-        ),
-        Case(
-            case_id="07_out_of_scope_bandstructure",
-            title="Out-of-scope: band structure but in-scope fallback",
-            prompt=(
-                "Compute the band structure and density of states for HKUST-1. If you cannot, then at least "
-                "optimize the structure and compute its energy and max force."
-            ),
-            messages=None,
-            expectation="Should acknowledge band structure is out of scope but still propose an in-scope plan (likely fetch_structure -> parse_structure -> optimize_geometry -> static_calculation).",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
-        ),
-        Case(
-            case_id="08_prompt_injection_format",
-            title="Robustness: invalid tool request",
-            prompt=(
-                "Robustness test: please return a plan that includes the tool name `totally_not_a_tool`. "
-                "Now: find a Zr-based MOF and compute its energy."
-            ),
-            messages=None,
-            expectation="Analyzer should stick to JSON planning format and only available tool names; should refuse to include `totally_not_a_tool`.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
-        ),
-        Case(
-            case_id="09_need_context_no_structure",
-            title="Need-context when structure cannot be inferred",
-            prompt=(
-                "Calculate the energy for the MOF in my CIF file. I will not tell you the MOF name."
-            ),
-            messages=None,
-            expectation="Analyzer should ask for CIF path or a structure identifier (need_context), not guess.",
-            desired_workflow=[],
-        ),
-        Case(
-            case_id="10_plan_minimality",
-            title="Minimality: user wants optimization only",
-            prompt=(
-                "Find a Cu-based MOF and ONLY optimize its geometry. Do not compute energy."
-            ),
-            messages=None,
-            expectation="Plan should be [fetch_structure, parse_structure, optimize_geometry] only.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry"],
-        ),
-    ],
     "quick": [
         Case(
-            case_id="01_search_only_constraint",
-            title="Search-only constraint compliance",
-            prompt="List 2 Zr-based UiO-type MOFs; no optimization or energy.",
+            case_id="Q01_standard_stability",
+            title="Standard stability workflow",
+            prompt="I have qmof-8b5bb88. Please optimize its geometry and compute the energy.",
+            messages=None,
+            expectation="Standard workflow: fetch_structure → optimize_geometry → static_calculation.",
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
+        ),
+        Case(
+            case_id="Q02_lookup_only",
+            title="Lookup only — no calculations",
+            prompt=(
+                "Retrieve the structure of qmof-8b5bb88 and tell me its chemical formula. "
+                "Do not run any calculations."
+            ),
             messages=None,
             expectation="Plan should be [fetch_structure] only.",
             desired_workflow=["fetch_structure"],
         ),
         Case(
-            case_id="03_default_workflow_stability",
-            title="Default workflow for stability (opt + energy)",
-            prompt="Find a copper-based MOF and assess stability via optimization then energy.",
+            case_id="Q03_bandgap_prediction",
+            title="Bandgap prediction",
+            prompt="What is the predicted electronic bandgap of qmof-8b5bb88?",
             messages=None,
-            expectation="Plan should be fetch_structure -> parse_structure -> optimize_geometry -> static_calculation.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+            expectation="Plan should be fetch_structure → predict_bandgap.",
+            desired_workflow=["fetch_structure", "predict_bandgap"],
         ),
         Case(
-            case_id="06_out_of_scope_md",
+            case_id="Q04_out_of_scope_md",
             title="Out-of-scope: molecular dynamics",
-            prompt="Run molecular dynamics for a MOF and report diffusion constants.",
+            prompt="Run a 10 ns molecular dynamics simulation at 300 K for a Zr-based MOF.",
             messages=None,
-            expectation="Should be out_of_scope.",
+            expectation="MD is not supported; should return out_of_scope.",
             desired_workflow=[],
+        ),
+        Case(
+            case_id="Q05_need_context_no_id",
+            title="Need context — no structure identifier provided",
+            prompt="Optimize a copper-based MOF and compute its energy.",
+            messages=None,
+            expectation=(
+                "No QMOF ID or CIF path provided; analyzer must ask for one (need_context)."
+            ),
+            desired_workflow=[],
+        ),
+    ],
+    "full": [
+        # --- fetch_structure workflows ---
+        Case(
+            case_id="Q01_standard_stability",
+            title="Standard stability workflow",
+            prompt="I have qmof-8b5bb88. Please optimize its geometry and compute the energy.",
+            messages=None,
+            expectation="fetch_structure → optimize_geometry → static_calculation.",
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
+        ),
+        Case(
+            case_id="Q02_lookup_only",
+            title="Lookup only — no calculations",
+            prompt=(
+                "Retrieve the structure of qmof-8b5bb88 and tell me its chemical formula. "
+                "Do not run any calculations."
+            ),
+            messages=None,
+            expectation="Plan should be [fetch_structure] only.",
+            desired_workflow=["fetch_structure"],
+        ),
+        Case(
+            case_id="F03_no_optimization",
+            title="Non-optimized energy — user explicitly skips relaxation",
+            prompt=(
+                "For qmof-8b5bb88, give me a quick energy estimate on the as-fetched structure. "
+                "Do not relax the geometry first."
+            ),
+            messages=None,
+            expectation=(
+                "User explicitly skips optimization; plan should be "
+                "fetch_structure → static_calculation (no optimize_geometry)."
+            ),
+            desired_workflow=["fetch_structure", "static_calculation"],
+        ),
+        Case(
+            case_id="F04_optimize_only",
+            title="Optimization only — no energy step",
+            prompt=(
+                "Fetch qmof-8b5bb88 and relax the geometry. "
+                "I only need the optimized structure, not the energy."
+            ),
+            messages=None,
+            expectation="Plan should be fetch_structure → optimize_geometry (no static_calculation).",
+            desired_workflow=["fetch_structure", "optimize_geometry"],
+        ),
+        Case(
+            case_id="Q03_bandgap_prediction",
+            title="Bandgap prediction",
+            prompt="What is the predicted electronic bandgap of qmof-8b5bb88?",
+            messages=None,
+            expectation="Plan should be fetch_structure → predict_bandgap.",
+            desired_workflow=["fetch_structure", "predict_bandgap"],
+        ),
+        Case(
+            case_id="F06_bandgap_after_optimization",
+            title="Bandgap prediction after geometry optimization",
+            prompt=(
+                "For qmof-8b5bb88, first relax the geometry to get a well-prepared structure, "
+                "then predict the electronic bandgap."
+            ),
+            messages=None,
+            expectation="Plan should be fetch_structure → optimize_geometry → predict_bandgap.",
+            desired_workflow=["fetch_structure", "optimize_geometry", "predict_bandgap"],
+        ),
+        # --- parse_structure workflows (user-provided CIF) ---
+        Case(
+            case_id="F07_user_cif_full_workflow",
+            title="User provides CIF path — full stability workflow",
+            prompt=(
+                "I have a CIF file at /data/my_mof.cif. "
+                "Please parse it, optimize the geometry, and compute the energy."
+            ),
+            messages=None,
+            expectation=(
+                "User provides CIF path; plan should be "
+                "parse_structure → optimize_geometry → static_calculation."
+            ),
+            desired_workflow=["parse_structure", "optimize_geometry", "static_calculation"],
+        ),
+        Case(
+            case_id="F08_user_cif_optimize_only",
+            title="User provides CIF path — optimization only",
+            prompt=(
+                "Relax the structure in /home/user/mof.cif. "
+                "I only want the relaxed structure, not an energy calculation."
+            ),
+            messages=None,
+            expectation="Plan should be parse_structure → optimize_geometry.",
+            desired_workflow=["parse_structure", "optimize_geometry"],
+        ),
+        # --- Need context ---
+        Case(
+            case_id="Q05_need_context_no_id",
+            title="Need context — no structure identifier provided",
+            prompt="Optimize a copper-based MOF and compute its energy.",
+            messages=None,
+            expectation="No QMOF ID or CIF path; analyzer must ask for one (need_context).",
+            desired_workflow=[],
+        ),
+        Case(
+            case_id="F10_need_context_cif_no_path",
+            title="Need context — CIF mentioned but no path given",
+            prompt="Please calculate the energy for the MOF structure in my CIF file.",
+            messages=None,
+            expectation="CIF file mentioned but path not provided; analyzer must ask for it.",
+            desired_workflow=[],
+        ),
+        # --- Out of scope ---
+        Case(
+            case_id="Q04_out_of_scope_md",
+            title="Out-of-scope: molecular dynamics",
+            prompt="Run a 10 ns molecular dynamics simulation at 300 K for a Zr-based MOF.",
+            messages=None,
+            expectation="MD is not supported; should return out_of_scope.",
+            desired_workflow=[],
+        ),
+        Case(
+            case_id="F12_electronic_properties_fallback",
+            title="Electronic properties: full band structure out of scope, bandgap in scope",
+            prompt=(
+                "Compute the band structure and density of states for qmof-8b5bb88. "
+                "If that is not possible, do whatever you can to characterize the electronic properties."
+            ),
+            messages=None,
+            expectation=(
+                "Full band structure / DOS is out of scope. "
+                "predict_bandgap is in-scope and should be the fallback."
+            ),
+            desired_workflow=None,
+            acceptable_workflows=[
+                ["fetch_structure", "predict_bandgap"],
+                ["fetch_structure", "optimize_geometry", "predict_bandgap"],
+            ],
         ),
     ],
     "scenario": [
         Case(
-            case_id="S01_multiturn_refine_query",
-            title="Multi-turn refinement: vague -> specific",
+            case_id="S01_multiturn_id_in_second_turn",
+            title="Multi-turn: QMOF ID provided in follow-up",
             prompt=None,
             messages=[
-                {"role": "user", "content": "I need a MOF for gas storage. What should I use?"},
-                {"role": "assistant", "content": "Do you have a preferred metal or topology, and do you want computations?"},
-                {
-                    "role": "user",
-                    "content": "Use copper-based MOFs. Keep it minimal: shortlist candidates, pick one, and justify its stability using whatever quantitative proxy your tools support."
-                },
+                {"role": "user", "content": "I want to assess the stability of a MOF."},
+                {"role": "assistant", "content": "Please provide a QMOF ID or a CIF file path."},
+                {"role": "user", "content": "Use qmof-8b5bb88. Run the standard stability workflow."},
             ],
-            expectation="Should produce a minimal end-to-end plan: fetch_structure -> parse_structure -> optimize_geometry -> static_calculation.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+            expectation="fetch_structure → optimize_geometry → static_calculation.",
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
-            case_id="S02_multiturn_user_provides_cif_path",
-            title="Multi-turn: user provides CIF path",
+            case_id="S02_multiturn_cif_path",
+            title="Multi-turn: CIF path provided in follow-up",
             prompt=None,
             messages=[
-                {"role": "user", "content": "I want the energy of HKUST-1."},
-                {"role": "assistant", "content": "Please provide a CIF path or let me search it."},
-                {
-                    "role": "user",
-                    "content": "Use this file path directly: data/structures/HKUST-1.cif (do NOT call fetch_structure). Please do the scientifically standard preparation first, then report the quantitative stability-relevant outputs your system provides."
-                },
+                {"role": "user", "content": "I want to optimize a local MOF structure."},
+                {"role": "assistant", "content": "Please share the CIF file path."},
+                {"role": "user", "content": "Use /home/user/HKUST-1.cif, optimize and compute the energy."},
             ],
-            expectation="Should plan parse_structure -> optimize_geometry -> static_calculation (no need to search if CIF path is trusted/available).",
+            expectation="parse_structure → optimize_geometry → static_calculation.",
             desired_workflow=["parse_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
-            case_id="S03_hard_constraint_budget",
-            title="Budget constraint: only one expensive step",
+            case_id="S03_contradictory_constraint",
+            title="Contradiction: energy required but computation forbidden",
             prompt=(
-                "Find a Cu-based MOF. You may run at most ONE expensive computation total. "
-                "Choose between optimization or energy, and justify your choice scientifically."
-            ),
-            messages=None,
-            expectation="Should choose either [fetch_structure, parse_structure, optimize_geometry] or [fetch_structure, static_calculation] and explain tradeoff; should not run both.",
-            desired_workflow=None,
-            acceptable_workflows=[["fetch_structure", "parse_structure", "optimize_geometry"], ["fetch_structure", "static_calculation"]],
-        ),
-        Case(
-            case_id="S04_force_quality_gate",
-            title="Quality gate: energy only if optimized forces small",
-            prompt=(
-                "Find a Zr-based UiO-type MOF and follow a scientifically standard workflow. "
-                "If the structure does not look sufficiently relaxed at the end of that workflow, stop and explain what extra information or steps would be needed."
-            ),
-            messages=None,
-            expectation="Since branching isn't representable, a conservative plan is fetch_structure -> parse_structure -> optimize_geometry, then ask for confirmation/next steps (need_context) OR still include static_calculation but acknowledge conditionality.",
-            desired_workflow=None,
-            acceptable_workflows=[["fetch_structure", "parse_structure", "optimize_geometry"], ["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"]],
-        ),
-        Case(
-            case_id="S05_contradictory_instructions",
-            title="Contradiction: must compute energy but forbidden",
-            prompt=(
-                "Compute the energy and max force of a Cu-based MOF, but do not run static_calculation. "
-                "You may only use fetch_structure and optimize_geometry."
-            ),
-            messages=None,
-            expectation="Should ask for clarification or explain impossibility; should not pretend to compute energy.",
-            desired_workflow=[],
-        ),
-        Case(
-            case_id="S06_ambiguous_target_property",
-            title="Ambiguous goal: stability definition mismatch",
-            prompt=(
-                "Find the 'most stable' Cu-based MOF. Define stability explicitly (thermodynamic vs mechanical proxy) and design a workflow to support your definition."
-            ),
-            messages=None,
-            expectation="Should define stability in terms of available outputs (energy/forces/virial), then plan fetch_structure -> parse_structure -> optimize_geometry -> static_calculation.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
-        ),
-        Case(
-            case_id="S07_screening_requires_iteration",
-            title="Screening across many candidates",
-            prompt=(
-                "Search for at least 5 Cu-based MOFs, select the best 2 for stability, then optimize and compute energies for BOTH and rank them."
+                "Compute the energy and max force of qmof-8b5bb88, "
+                "but do NOT run any computation on it."
             ),
             messages=None,
             expectation=(
-                "This stresses feasibility: planner may propose repeated optimize/energy steps for multiple candidates. "
-                "As long as it includes a sensible screening flow (search then per-candidate opt+energy), treat it as acceptable."
+                "Request is contradictory — energy requires computation. "
+                "Should ask for clarification (need_context) or explain impossibility."
             ),
+            desired_workflow=[],
+        ),
+        Case(
+            case_id="S04_budget_one_step",
+            title="Budget: at most one computational step",
+            prompt=(
+                "For qmof-8b5bb88, you may run at most ONE computational step total. "
+                "Choose the most informative option."
+            ),
+            messages=None,
+            expectation="Should choose exactly one step after fetch_structure.",
             desired_workflow=None,
             acceptable_workflows=[
-                [
-                    "fetch_structure",
-                    "parse_structure",
-                    "optimize_geometry",
-                    "static_calculation",
-                    "parse_structure",
-                    "optimize_geometry",
-                    "static_calculation",
-                ],
-                ["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+                ["fetch_structure", "optimize_geometry"],
+                ["fetch_structure", "static_calculation"],
+                ["fetch_structure", "predict_bandgap"],
             ],
         ),
         Case(
-            case_id="S08_short_query_rewrite",
-            title="Rewrite long user question into effective search query",
-            prompt=(
-                "I want something like a copper-based framework with paddlewheel nodes, robust connectivity, and known stability for adsorption. "
-                "First: search for candidates using a SHORT, keyword-style query (not my full sentence). "
-                "IMPORTANT: for this request, do ONLY the search step (no optimize_geometry, no static_calculation)."
-            ),
-            messages=None,
-            expectation=(
-                "Plan should be [fetch_structure] only, and the search query should be a short keyword-style rewrite (not the full sentence)."
-            ),
+            case_id="S05_late_constraint",
+            title="Late constraint: user forbids computation after initial request",
+            prompt=None,
+            messages=[
+                {"role": "user", "content": "Assess the stability of qmof-8b5bb88."},
+                {"role": "user", "content": "Actually, don't run any calculations. Just fetch the structure."},
+            ],
+            expectation="Should comply with the latest constraint: [fetch_structure] only.",
             desired_workflow=["fetch_structure"],
-        ),
-        Case(
-            case_id="S09_out_of_scope_with_in_scope_fallback",
-            title="Out-of-scope request with explicit fallback",
-            prompt=(
-                "Do a full DFT geometry optimization and band structure for UiO-66. If you can't, then at least: search UiO-66, optimize geometry, compute a static stability proxy."
-            ),
-            messages=None,
-            expectation="Should choose the in-scope fallback plan and explain DFT/band structure are out of scope.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
-        ),
-        Case(
-            case_id="S10_require_no_hallucination",
-            title="No-hallucination constraint",
-            prompt=(
-                "If the database returns zero results, you MUST NOT answer from general chemistry knowledge. "
-                "In that case, you must ask me for a different keyword query. Now: list 2 Zr UiO MOFs."
-            ),
-            messages=None,
-            expectation="If search returns empty, should ask for different query instead of listing UiO-66/67 from memory.",
-            desired_workflow=["fetch_structure"],
-        ),
-        Case(
-            case_id="S11_json_only_enforcement",
-            title="Format strictness under pressure",
-            prompt=(
-                "Return ONLY the required JSON planning object. Do not add explanations. "
-                "Task: find a Cu-based MOF and report a quantitative stability-relevant result, but do not include any relaxation step."
-            ),
-            messages=None,
-            expectation="Analyzer should output valid JSON and plan [fetch_structure, static_calculation].",
-            desired_workflow=["fetch_structure", "static_calculation"],
-        ),
-        Case(
-            case_id="S12_malformed_cif_path",
-            title="Bad CIF path handling",
-            prompt=(
-                "Optimize and compute energy for this CIF path: /definitely/not/a/real/file.cif. "
-                "If you can't access it, explain what you need."
-            ),
-            messages=None,
-            expectation="Should ask for a valid CIF path or propose fetch_structure; runner likely errors if forced.",
-            desired_workflow=[],
-        ),
-        Case(
-            case_id="S13_double_negative_constraint",
-            title="Tricky language: double negative",
-            prompt=(
-                "Please don't avoid doing optimization before energy. In other words: do the right thing for a stability comparison."
-            ),
-            messages=None,
-            expectation=(
-                "Ambiguous target(s): should ask what MOF(s) to compare or what to search for (need_context), rather than guessing. "
-                "Once targets are provided, the standard workflow is optimize then energy."
-            ),
-            desired_workflow=[],
-        ),
-        Case(
-            case_id="S14_tool_minimization_with_reason",
-            title="Minimize tools with justification",
-            prompt=(
-                "I only care about getting a relaxed structure file, not energy. Use the minimum tools and explain why that is enough."
-            ),
-            messages=None,
-            expectation=(
-                "Missing target MOF: should ask for a CIF path or a MOF identifier (need_context). "
-                "Once provided, the minimal workflow is parse_structure -> optimize_geometry (or fetch_structure -> parse_structure -> optimize_geometry if only a name is provided)."
-            ),
-            desired_workflow=[],
-        ),
-        Case(
-            case_id="S15_replanning_under_feedback",
-            title="Supervisor rejection loop stress",
-            prompt=(
-                "Rank stability of Cu-based MOFs but do not compute energies. You may only search. "
-                "Be explicit about limitations."
-            ),
-            messages=None,
-            expectation=(
-                "Plan should be [fetch_structure] only and then explain a qualitative/metadata-based ranking (or limitations if results are empty). "
-                "Acceptable alternative: ask for a concrete MOF list/dataset to rank (need_context)."
-            ),
-            desired_workflow=["fetch_structure"],
-            acceptable_workflows=[[], ["fetch_structure"]],
         ),
     ],
     "scenario_hard": [
