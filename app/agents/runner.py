@@ -147,12 +147,9 @@ def _prepare_tool_args(
 
     # 2. Parse structure tool
     elif tool_name == "parse_structure":
-        # Prefer any CIF path we can find from prior tool outputs.
-        cif_path = _find_cif_filepath(tool_outputs, prefer_optimized=True)
-
-        # If the user typed a file path in the query, prefer that.
+        # Use the file path from the user's query, or fall back to the raw query string.
         user_path = _extract_existing_structure_path(original_query)
-        data = user_path or cif_path or original_query
+        data = user_path or original_query
         return {"data": data}
 
     # 3. Optimization tools
@@ -182,39 +179,6 @@ def _prepare_tool_args(
 
     else:
         return {}
-
-
-def _find_cif_filepath(tool_outputs: Dict[str, Any], prefer_optimized: bool = False) -> str:
-    """
-    Find a CIF filepath in the tool outputs.
-    """
-
-    optimized_path = None
-    original_path = None
-
-    # Search through outputs in order
-    for key in sorted(tool_outputs.keys()):
-        output = tool_outputs[key]
-
-        if isinstance(output, list) and len(output) > 0 and isinstance(output[0], dict):
-            # Take first result from search if it matches
-            first = output[0]
-            if "cif_filepath" in first:
-                original_path = first["cif_filepath"]
-            if "optimized_cif_filepath" in first:
-                optimized_path = first["optimized_cif_filepath"]
-
-        elif isinstance(output, dict):
-            if "optimized_cif_filepath" in output:
-                optimized_path = output["optimized_cif_filepath"]
-
-            if "cif_filepath" in output and not output.get("error"):
-                original_path = output["cif_filepath"]
-
-    if prefer_optimized and optimized_path:
-        return optimized_path
-
-    return optimized_path or original_path
 
 
 def _find_latest_atoms_dict(tool_outputs: Dict[str, Any], prefer_optimized: bool) -> Any:

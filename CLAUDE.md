@@ -46,11 +46,12 @@ Graph compilation and routing logic is in `app/graph.py` (recursion limit: 10). 
 
 ## MCP Tools
 
-Tools are executed remotely on the Bohrium MCP server — they are not run locally. The four tools are:
+Tools are executed remotely on the Bohrium MCP server — they are not run locally. The five tools are:
 - `fetch_structure` — fetches a MOF structure from the QMOF database by ID
 - `parse_structure` — parses a CIF file into an atoms dict
 - `optimize_geometry` — runs ML force field geometry optimization
 - `static_calculation` — runs a single-point energy/force calculation
+- `predict_bandgap` — predicts the electronic bandgap of a MOF structure (eV)
 
 Tool outputs follow a consistent schema (see `IMPLEMENTATION.md` for full details).
 
