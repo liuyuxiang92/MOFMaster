@@ -171,6 +171,14 @@ def _prepare_tool_args(
             payload["atoms_dict"] = atoms_dict
         return payload
 
+    # 5. Bandgap prediction tool
+    elif tool_name == "predict_bandgap":
+        atoms_dict = _find_latest_atoms_dict(tool_outputs, prefer_optimized=True)
+        payload: Dict[str, Any] = {}
+        if atoms_dict is not None:
+            payload["atoms_dict"] = atoms_dict
+        return payload
+
     else:
         return {}
 

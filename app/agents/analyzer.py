@@ -82,6 +82,7 @@ Available tool names (must match exactly):
 - parse_structure
 - optimize_geometry
 - static_calculation
+- predict_bandgap
 """
 
 

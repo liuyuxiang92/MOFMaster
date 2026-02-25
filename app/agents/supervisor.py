@@ -25,12 +25,14 @@ SCIENTIFIC RULES (derived from the knowledge base):
 - Geometry optimization (`optimize_geometry`) should typically precede static energy/force calculations for meaningful results, unless the user explicitly wants a quick, non-optimized estimate.
 - Static calculation (`static_calculation`) is appropriate when the user asks about energy, stability, forces, or virial, or when they implicitly want "stability" comparisons.
 - If the user explicitly states they only want search or optimization (and *no* energies), additional energy steps should be rejected.
+- `predict_bandgap` requires a parsed structure (`parse_structure` must precede it); using an optimized structure is preferred but not required.
 
 AVAILABLE TOOLS (you are only reviewing their ordering and necessity):
 - search_mofs: Search for MOF structures.
 - parse_structure: Parse/validate a structure into ASE Atoms (dict).
 - optimize_geometry: Optimize geometry.
 - static_calculation: Compute static energy/forces/virial.
+- predict_bandgap: Predict the electronic bandgap (eV) of a structure.
 
 {revision_context}
 
