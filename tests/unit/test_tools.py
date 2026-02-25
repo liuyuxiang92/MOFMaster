@@ -2,7 +2,14 @@
 Unit tests for tools
 """
 
+import sys
 from pathlib import Path
+from unittest.mock import MagicMock
+
+# Stub out the dp SDK so runner.py can be imported without the package installed
+for _mod in ("dp", "dp.agent", "dp.agent.client", "dp.agent.client.mcp_client"):
+    sys.modules.setdefault(_mod, MagicMock())
+
 from app.tools.io import get_data_dir, write_cif_file, read_cif_file
 
 
@@ -31,25 +38,43 @@ def test_write_and_read_cif():
     test_file.unlink()
 
 
-def test_search_mof_db():
-    """Test MOF database search"""
-    from app.tools.retrieval import search_mof_db
+def test_prepare_args_search_mofs():
+    """Test that _prepare_tool_args returns correct args for search_mofs"""
+    from app.agents.runner import _prepare_tool_args
 
-    # Search for copper
-    result = search_mof_db.func("copper")
-
-    assert "mof_name" in result
-    assert result["mof_name"] == "HKUST-1"
-    assert "cif_filepath" in result
-
-    # Verify CIF file was created
-    assert Path(result["cif_filepath"]).exists()
+    state = {"original_query": "copper MOF"}
+    args = _prepare_tool_args("search_mofs", {}, state)
+    assert args["query"] == "copper MOF"
+    assert args["query_string"] == "copper MOF"
 
 
-def test_search_mof_db_not_found():
-    """Test MOF database search with no results"""
-    from app.tools.retrieval import search_mof_db
+def test_prepare_args_predict_bandgap_with_atoms():
+    """Test that _prepare_tool_args picks up atoms_dict from parse_structure output"""
+    from app.agents.runner import _prepare_tool_args
 
-    result = search_mof_db.func("nonexistent_element_xyz")
+    atoms = {"numbers": [29], "positions": [[0, 0, 0]]}
+    tool_outputs = {"step_0_parse_structure": {"atoms_dict": atoms}}
+    args = _prepare_tool_args("predict_bandgap", tool_outputs, {"original_query": ""})
+    assert args["atoms_dict"] == atoms
 
-    assert "error" in result
+
+def test_prepare_args_predict_bandgap_prefers_optimized():
+    """Test that predict_bandgap prefers optimized_atoms_dict over atoms_dict"""
+    from app.agents.runner import _prepare_tool_args
+
+    raw_atoms = {"numbers": [29], "positions": [[0, 0, 0]]}
+    opt_atoms = {"numbers": [29], "positions": [[0.1, 0, 0]]}
+    tool_outputs = {
+        "step_0_parse_structure": {"atoms_dict": raw_atoms},
+        "step_1_optimize_geometry": {"optimized_atoms_dict": opt_atoms},
+    }
+    args = _prepare_tool_args("predict_bandgap", tool_outputs, {"original_query": ""})
+    assert args["atoms_dict"] == opt_atoms
+
+
+def test_prepare_args_unknown_tool():
+    """Test that an unknown tool name returns an empty dict without crashing"""
+    from app.agents.runner import _prepare_tool_args
+
+    args = _prepare_tool_args("nonexistent_tool", {}, {"original_query": ""})
+    assert args == {}
