@@ -33,15 +33,24 @@ KNOWLEDGE BASE (authoritative description of role, tools, and workflows):
 {feedback_section}
 
 PLANNING GUIDELINES:
-- Think in terms of workflows, not single tool calls.
-- Follow the default order of operations when appropriate:
-    - structure acquisition → structure parsing → geometry optimization → static calculation.
-- It is acceptable to:
-    - Use only `fetch_structure` when the user only wants candidates or a quick lookup.
-    - Use `parse_structure` → `optimize_geometry` → `static_calculation` when the user provides a specific structure.
-    - Perform screening workflows over multiple candidates (e.g., search → filter → optimize/energy for a small subset).
-- Do NOT add expensive steps (especially energy calculations) if the user explicitly requested to avoid them.
-- If the user’s intent is ambiguous (e.g., "find a stable Cu-based MOF"), you may include optimization and/or energy calculations as part of a reasonable scientific workflow.
+- Choose the workflow pattern that matches how the structure is identified:
+
+  Pattern A — QMOF database entry (user provides a QMOF ID such as "qmof-8b5bb88"):
+      fetch_structure → [optimize_geometry] → [static_calculation or predict_bandgap]
+      CRITICAL: Do NOT insert parse_structure after fetch_structure. fetch_structure already
+      returns atoms_dict directly. parse_structure is redundant and MUST be omitted.
+
+  Pattern B — User provides a CIF/XYZ/POSCAR file path (e.g. "/path/to/my.cif"):
+      parse_structure → [optimize_geometry] → [static_calculation or predict_bandgap]
+      parse_structure IS required here to load the file into atoms_dict.
+
+- Tailor the plan to the user’s stated goals:
+    - Include only `fetch_structure` or `parse_structure` for a quick lookup with no computation.
+    - Include `optimize_geometry` when the user wants a relaxed structure.
+    - Include `static_calculation` when the user asks about energy, stability, or forces.
+    - Include `predict_bandgap` when the user asks about bandgap or electronic properties.
+    - Omit any step the user explicitly forbids (e.g. "do not optimize", "no energy calculation").
+- Do NOT add expensive steps if the user explicitly requested to avoid them.
 - If there is supervisor feedback, carefully consider it and improve your plan accordingly.
 
 SCOPE AND CONTEXT HANDLING:
