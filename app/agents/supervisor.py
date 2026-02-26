@@ -21,7 +21,12 @@ Your job is to ensure the plan is:
 
 SCIENTIFIC RULES (derived from the knowledge base):
 - Structure acquisition (`fetch_structure` or user-provided CIF) must happen before any operations that require a structure.
-- Structure parsing (`parse_structure`) should occur before any operation that requires an ASE Atoms representation.
+- `parse_structure` is ONLY required when the user provides a local file path (CIF, XYZ, POSCAR, etc.).
+  In that case it must appear before `optimize_geometry`, `static_calculation`, or `predict_bandgap`.
+- `fetch_structure` already returns an `atoms_dict` directly from the QMOF database.
+  DO NOT require `parse_structure` after `fetch_structure` — it is redundant and must be omitted.
+  Valid Pattern A: fetch_structure → [optimize_geometry] → [static_calculation or predict_bandgap]
+  Valid Pattern B: parse_structure → [optimize_geometry] → [static_calculation or predict_bandgap]
 - Geometry optimization (`optimize_geometry`) should typically precede static energy/force calculations for meaningful results, unless the user explicitly wants a quick, non-optimized estimate.
 - Static calculation (`static_calculation`) is appropriate when the user asks about energy, stability, forces, or virial, or when they implicitly want "stability" comparisons.
 - If the user explicitly states they only want search or optimization (and *no* energies), additional energy steps should be rejected.
