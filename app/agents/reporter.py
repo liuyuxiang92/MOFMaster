@@ -79,17 +79,33 @@ async def reporter_node(state: AgentState) -> AgentState:
     return state
 
 
+# Fields containing large structural arrays — omit from LLM context
+_LARGE_ARRAY_FIELDS = {"atoms_dict", "optimized_atoms_dict", "numbers",
+                        "positions", "cell", "pbc", "forces", "virial"}
+
+
 def _format_tool_outputs(tool_outputs: dict) -> str:
-    """Format tool outputs as readable text"""
+    """Format tool outputs as readable text, skipping large structural arrays."""
 
     lines = []
     for key, value in tool_outputs.items():
         lines.append(f"\n### {key}")
-
         if isinstance(value, dict):
             for k, v in value.items():
-                lines.append(f"- {k}: {v}")
+                if k in _LARGE_ARRAY_FIELDS:
+                    if isinstance(v, list):
+                        lines.append(f"- {k}: [{len(v)} items, omitted for brevity]")
+                    elif v is None:
+                        lines.append(f"- {k}: null")
+                    else:
+                        lines.append(f"- {k}: [omitted]")
+                elif isinstance(v, dict):
+                    lines.append(f"- {k}:")
+                    for mk, mv in v.items():
+                        lines.append(f"    - {mk}: {mv}")
+                else:
+                    lines.append(f"- {k}: {v}")
         else:
-            lines.append(f"- {value}")
+            lines.append(str(value))
 
     return "\n".join(lines)
