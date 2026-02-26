@@ -183,8 +183,14 @@ def _prepare_tool_args(
 
 def _find_latest_atoms_dict(tool_outputs: Dict[str, Any], prefer_optimized: bool) -> Any:
     """Find the most recent atoms_dict from parse/optimization outputs."""
-    # Sort keys to follow step order (step_0_..., step_1_...)
-    for key in sorted(tool_outputs.keys(), reverse=True):
+    import re as _re
+
+    def _step_index(k: str) -> int:
+        m = _re.match(r"step_(\d+)_", k)
+        return int(m.group(1)) if m else -1
+
+    # Sort by numeric step index (descending) so step_10 sorts after step_9
+    for key in sorted(tool_outputs.keys(), key=_step_index, reverse=True):
         output = tool_outputs[key]
         if not isinstance(output, dict):
             continue
@@ -205,18 +211,14 @@ def _extract_mof_id(text: str) -> str | None:
 
 
 def _extract_existing_structure_path(text: str) -> str | None:
-    """Extract an existing structure file path from user text (best-effort)."""
+    """Extract a structure file path from user text (best-effort).
+
+    Does not check whether the path exists locally — the file may live on a
+    remote server (e.g. Bohrium) and only needs to be valid on that side.
+    """
     import re
-    from pathlib import Path
 
     # Common structure formats we support downstream
     pattern = r"(/[^\s]+\.(?:cif|xyz|vasp|poscar|POSCAR))"
     match = re.search(pattern, text)
-    if not match:
-        return None
-    candidate = match.group(1)
-    try:
-        p = Path(candidate)
-        return str(p) if p.exists() else None
-    except Exception:
-        return None
+    return match.group(1) if match else None

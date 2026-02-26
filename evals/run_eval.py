@@ -32,6 +32,7 @@ class Result:
     approved: bool
     passed: bool
     reason: str
+    last_ai_preview: str | None = None
 
 
 def _check(case: Case, actual_plan: list[str], approved: bool) -> tuple[bool, str]:
@@ -72,6 +73,15 @@ def _build_init(case: Case) -> dict:
     }
 
 
+def _last_ai_preview(messages: list) -> str | None:
+    """Return a short preview of the last AI message, for use in inspect.py."""
+    for msg in reversed(messages):
+        if hasattr(msg, "content") and type(msg).__name__ == "AIMessage":
+            text = msg.content if isinstance(msg.content, str) else str(msg.content)
+            return (text[:220] + "…") if len(text) > 220 else text
+    return None
+
+
 async def _run(cases: list[Case]) -> list[Result]:
     graph = get_compiled_graph()
     results = []
@@ -83,7 +93,8 @@ async def _run(cases: list[Case]) -> list[Result]:
         passed, reason = _check(case, actual_plan, approved)
         label = "PASS" if passed else "FAIL"
         print(f"[{i}/{total}] {case.case_id:<38} {label}  {reason}")
-        results.append(Result(case, actual_plan, approved, passed, reason))
+        results.append(Result(case, actual_plan, approved, passed, reason,
+                              _last_ai_preview(final.get("messages", []))))
     return results
 
 
@@ -141,6 +152,7 @@ def main() -> int:
                 "reason": r.reason,
                 "expectation": r.case.expectation,
                 "desired_workflow": r.case.desired_workflow,
+                "last_ai_preview": r.last_ai_preview,
             }
             for r in results
         ]

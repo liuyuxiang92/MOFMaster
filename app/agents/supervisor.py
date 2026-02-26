@@ -25,7 +25,7 @@ SCIENTIFIC RULES (derived from the knowledge base):
 - Geometry optimization (`optimize_geometry`) should typically precede static energy/force calculations for meaningful results, unless the user explicitly wants a quick, non-optimized estimate.
 - Static calculation (`static_calculation`) is appropriate when the user asks about energy, stability, forces, or virial, or when they implicitly want "stability" comparisons.
 - If the user explicitly states they only want search or optimization (and *no* energies), additional energy steps should be rejected.
-- `predict_bandgap` requires a parsed structure (`parse_structure` must precede it); using an optimized structure is preferred but not required.
+- `predict_bandgap` requires an `atoms_dict` from a prior step (`fetch_structure` or `parse_structure`); using an optimized structure is preferred but not required.
 
 AVAILABLE TOOLS (you are only reviewing their ordering and necessity):
 - fetch_structure: Fetch a MOF structure from the QMOF database by ID.

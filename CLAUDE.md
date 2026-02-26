@@ -86,7 +86,16 @@ LANGCHAIN_PROJECT=...
 
 ## Evaluation Scripts
 
-`scripts/` contains tools for batch evaluation of the analyzer agent:
-- `analyzer_eval.py` — runs eval harness against test cases in `data/evals/`
-- `inspect_eval_run.py` — inspects individual eval run results
-- `render_eval_report.py` — renders summary reports
+`evals/` contains tools for batch evaluation of the analyzer agent:
+- `run_eval.py` — automated runner (invokes the graph directly, no HTTP server needed)
+- `analyzer_eval.py` — HTTP-based runner against a running LangServe endpoint
+- `eval_cases.py` — shared `Case` dataclass and `CASES` suite definitions
+- `report.py` — render a clean Markdown report from a saved run directory
+- `inspect.py` — inspect failures (or a specific case) from a saved run directory
+
+```bash
+uv run python evals/run_eval.py --cases quick
+uv run python evals/run_eval.py --cases full --out data/evals
+uv run python evals/report.py data/evals/run_LATEST
+uv run python evals/inspect.py data/evals/run_LATEST Q01_standard_stability
+```
