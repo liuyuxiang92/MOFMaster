@@ -291,7 +291,7 @@ CASES: dict[str, list[Case]] = {
                 "Should keep tool usage minimal (often search only, or single-candidate workflow if justified) and explain limitations in the final report."
             ),
             desired_workflow=None,
-            acceptable_workflows=[["fetch_structure"], ["fetch_structure", "parse_structure", "optimize_geometry"]],
+            acceptable_workflows=[["fetch_structure"], ["fetch_structure", "optimize_geometry"]],
         ),
         Case(
             case_id="H02_multiturn_typo_and_disambiguation",
@@ -313,7 +313,7 @@ CASES: dict[str, list[Case]] = {
             expectation=(
                 "Should map the name to a good search query (UiO-66) and choose an appropriate minimal workflow to support a stability proxy."
             ),
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H03_constraints_conflict_no_numbers_but_winner",
@@ -366,7 +366,7 @@ CASES: dict[str, list[Case]] = {
             expectation=(
                 "Should encode a sensible default workflow; may need to explain conditionality since branching isn't explicit in tool lists."
             ),
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H07_out_of_scope_plus_fallback_no_keywords",
@@ -378,7 +378,7 @@ CASES: dict[str, list[Case]] = {
             expectation=(
                 "Should declare electronic properties out of scope and fall back to supported workflow for stability proxy."
             ),
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H08_no_hallucination_enforced_strictly",
@@ -417,7 +417,7 @@ CASES: dict[str, list[Case]] = {
             expectation=(
                 "Should extract core constraints, ignore irrelevant details, and propose a minimal defensible workflow."
             ),
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H11_multi_turn_add_new_constraint_late",
@@ -465,8 +465,8 @@ CASES: dict[str, list[Case]] = {
                     ),
                 }
             ],
-            expectation="Should plan fetch_structure -> parse_structure -> optimize_geometry -> static_calculation.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+            expectation="Should plan fetch_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H02b_uio66_relax_then_evaluate",
@@ -481,8 +481,8 @@ CASES: dict[str, list[Case]] = {
                     ),
                 }
             ],
-            expectation="Should plan fetch_structure -> parse_structure -> optimize_geometry -> static_calculation.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+            expectation="Should plan fetch_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
         ),
         Case(
             case_id="H02c_uio66_two_turn_no_stability_word",
@@ -498,8 +498,8 @@ CASES: dict[str, list[Case]] = {
                     ),
                 },
             ],
-            expectation="Should plan fetch_structure -> parse_structure -> optimize_geometry -> static_calculation.",
-            desired_workflow=["fetch_structure", "parse_structure", "optimize_geometry", "static_calculation"],
+            expectation="Should plan fetch_structure -> optimize_geometry -> static_calculation.",
+            desired_workflow=["fetch_structure", "optimize_geometry", "static_calculation"],
         ),
     ],
 }

@@ -114,14 +114,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    missing = []
     if not (os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")):
-        missing.append("LLM API key (OPENAI_API_KEY or ANTHROPIC_API_KEY)")
-    if not os.getenv("MCP_SERVER_URL"):
-        missing.append("MCP_SERVER_URL")
-    if missing:
-        print(f"ERROR: missing environment variables: {', '.join(missing)}")
+        print("ERROR: missing environment variable: LLM API key (OPENAI_API_KEY or ANTHROPIC_API_KEY)")
         return 1
+    if not os.getenv("MCP_SERVER_URL"):
+        print("WARNING: MCP_SERVER_URL not set — runner will use its built-in default endpoint.")
+        print("         Tool execution may fail, but plan/approval checks will still work.\n")
 
     selected = CASES[args.cases]
     if args.only:

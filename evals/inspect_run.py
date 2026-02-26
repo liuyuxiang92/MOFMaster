@@ -3,10 +3,10 @@
 
 Usage:
   # Show all failures in a run
-  uv run python evals/inspect.py data/evals/run_YYYYMMDD_HHMMSS
+  uv run python evals/inspect_run.py data/evals/run_YYYYMMDD_HHMMSS
 
   # Show details for a specific case
-  uv run python evals/inspect.py data/evals/run_YYYYMMDD_HHMMSS Q01_standard_stability
+  uv run python evals/inspect_run.py data/evals/run_YYYYMMDD_HHMMSS Q01_standard_stability
 """
 
 from __future__ import annotations

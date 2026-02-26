@@ -91,11 +91,11 @@ LANGCHAIN_PROJECT=...
 - `analyzer_eval.py` — HTTP-based runner against a running LangServe endpoint
 - `eval_cases.py` — shared `Case` dataclass and `CASES` suite definitions
 - `report.py` — render a clean Markdown report from a saved run directory
-- `inspect.py` — inspect failures (or a specific case) from a saved run directory
+- `inspect_run.py` — inspect failures (or a specific case) from a saved run directory
 
 ```bash
 uv run python evals/run_eval.py --cases quick
 uv run python evals/run_eval.py --cases full --out data/evals
 uv run python evals/report.py data/evals/run_LATEST
-uv run python evals/inspect.py data/evals/run_LATEST Q01_standard_stability
+uv run python evals/inspect_run.py data/evals/run_LATEST Q01_standard_stability
 ```

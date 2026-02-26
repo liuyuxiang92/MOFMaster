@@ -6,6 +6,7 @@ import os
 import asyncio
 import json
 import logging
+import re
 from typing import Dict, Any, List
 # Bohr Agent SDK imports
 from dp.agent.client.mcp_client import MCPClient
@@ -155,6 +156,8 @@ def _prepare_tool_args(
     # 3. Optimization tools
     elif tool_name == "optimize_geometry":
         atoms_dict = _find_latest_atoms_dict(tool_outputs, prefer_optimized=False)
+        if atoms_dict is None:
+            logger.warning("⚠️  optimize_geometry: no atoms_dict found in prior tool outputs")
         payload: Dict[str, Any] = {}
         if atoms_dict is not None:
             payload["atoms_dict"] = atoms_dict
@@ -164,6 +167,8 @@ def _prepare_tool_args(
     elif tool_name == "static_calculation":
         # Prefer optimized atoms if available, else parsed atoms.
         atoms_dict = _find_latest_atoms_dict(tool_outputs, prefer_optimized=True)
+        if atoms_dict is None:
+            logger.warning("⚠️  static_calculation: no atoms_dict found in prior tool outputs")
         payload: Dict[str, Any] = {}
         if atoms_dict is not None:
             payload["atoms_dict"] = atoms_dict
@@ -172,6 +177,8 @@ def _prepare_tool_args(
     # 5. Bandgap prediction tool
     elif tool_name == "predict_bandgap":
         atoms_dict = _find_latest_atoms_dict(tool_outputs, prefer_optimized=True)
+        if atoms_dict is None:
+            logger.warning("⚠️  predict_bandgap: no atoms_dict found in prior tool outputs")
         payload: Dict[str, Any] = {}
         if atoms_dict is not None:
             payload["atoms_dict"] = atoms_dict
@@ -183,10 +190,9 @@ def _prepare_tool_args(
 
 def _find_latest_atoms_dict(tool_outputs: Dict[str, Any], prefer_optimized: bool) -> Any:
     """Find the most recent atoms_dict from parse/optimization outputs."""
-    import re as _re
 
     def _step_index(k: str) -> int:
-        m = _re.match(r"step_(\d+)_", k)
+        m = re.match(r"step_(\d+)_", k)
         return int(m.group(1)) if m else -1
 
     # Sort by numeric step index (descending) so step_10 sorts after step_9
@@ -205,7 +211,6 @@ def _find_latest_atoms_dict(tool_outputs: Dict[str, Any], prefer_optimized: bool
 
 def _extract_mof_id(text: str) -> str | None:
     """Extract a QMOF ID (e.g. qmof-8b5bb88) from user text."""
-    import re
     match = re.search(r"\bqmof-[a-f0-9]+\b", text, re.IGNORECASE)
     return match.group(0) if match else None
 
@@ -216,8 +221,6 @@ def _extract_existing_structure_path(text: str) -> str | None:
     Does not check whether the path exists locally — the file may live on a
     remote server (e.g. Bohrium) and only needs to be valid on that side.
     """
-    import re
-
     # Common structure formats we support downstream
     pattern = r"(/[^\s]+\.(?:cif|xyz|vasp|poscar|POSCAR))"
     match = re.search(pattern, text)
