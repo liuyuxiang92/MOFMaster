@@ -33,20 +33,42 @@ KNOWLEDGE BASE (authoritative description of role, tools, and workflows):
 {feedback_section}
 
 PLANNING GUIDELINES:
-- For simple tasks, a single-step plan may be sufficient. For complex tasks, think in terms of multi-step workflows.
-- Follow the default order of operations when appropriate:
-    - structure acquisition → geometry optimization → energy/force calculation.
-- It is acceptable to:
-    - Use only `search_mofs` when the user only wants candidates or a quick lookup.
-    - Use `optimize_structure` → `calculate_energy` when the user provides a specific structure.
-    - Perform screening workflows over multiple candidates (e.g., search → filter → optimize/energy for a small subset).
-- Do NOT add expensive steps (especially energy calculations) if the user explicitly requested to avoid them.
-- If the user’s intent is ambiguous (e.g., "find a stable Cu-based MOF"), you may include optimization and/or energy calculations as part of a reasonable scientific workflow.
+Follow the three-step decision framework from the knowledge base:
+
+STEP 1 — Identify the terminal step from the user’s goal (knowledge base §3.1):
+  - Energy, stability, forces, or structural comparison → terminal step: `static_calculation`
+  - Bandgap or electronic properties → terminal step: `predict_bandgap`
+  - CRITICAL: these are MUTUALLY EXCLUSIVE. NEVER include both in the same plan unless the
+    user explicitly requests BOTH energy AND bandgap.
+    * Electronic characterization (even as a fallback from out-of-scope DOS/band structure)
+      → plan ends with `predict_bandgap` ONLY. Do NOT add `static_calculation`.
+    * Energy, stability, or forces → plan ends with `static_calculation` ONLY.
+      Do NOT add `predict_bandgap`.
+
+STEP 2 — Choose structure acquisition:
+  - User provides a QMOF ID (e.g. "qmof-8b5bb88") → use `fetch_structure`.
+    CRITICAL: Do NOT add `parse_structure` after `fetch_structure` — it is redundant.
+  - User provides a file path (CIF/XYZ/POSCAR) → use `parse_structure`.
+  - Use one or the other — never both.
+
+STEP 3 — Decide on geometry optimization:
+  - Include `optimize_geometry` for more accurate energy/bandgap results or when user requests it.
+  - May be skipped for quick lookups or when the user explicitly says no optimization.
+  - Omit any step the user explicitly forbids.
+
+These three steps map to the named patterns in the knowledge base §3.3:
+  Energy (QMOF):   fetch_structure → [optimize_geometry] → static_calculation  (Pattern A)
+  Energy (file):   parse_structure → [optimize_geometry] → static_calculation  (Pattern B)
+  Bandgap (quick): fetch_structure → predict_bandgap                            (Pattern F)
+  Bandgap (opt):   fetch_structure → optimize_geometry → predict_bandgap        (Pattern G)
+
+- Do NOT add expensive steps if the user explicitly requested to avoid them.
 - If there is supervisor feedback, carefully consider it and improve your plan accordingly.
 
 SCOPE AND CONTEXT HANDLING:
 - If the query is OUT OF SCOPE according to the knowledge base, politely explain what you cannot do and, when possible, suggest alternative analyses you *can* perform.
 - If you are missing critical context (e.g., user asks for energy but no structure or CIF path is available and cannot be inferred), ask a concise clarification question.
+- IMPORTANT: If the user's message contains a recognisable QMOF ID (matching the pattern qmof-XXXXXXX) anywhere in their text — even in casual phrasing such as "something like qmof-8b5bb88" or "for example qmof-8b5bb88" — treat that ID as the intended target structure and proceed with a plan. Do NOT ask for clarification merely because the phrasing is informal.
 
 OUTPUT REQUIREMENTS:
 - When you are ready to plan, you MUST output a **valid JSON object** in one of the formats below. Do not include any extra text outside the JSON.
@@ -78,9 +100,11 @@ OUTPUT FORMAT when the request is out of scope:
 ```
 
 Available tool names (must match exactly):
-- search_mofs
-- optimize_structure
-- calculate_energy
+- fetch_structure
+- parse_structure
+- optimize_geometry
+- static_calculation
+- predict_bandgap
 """
 
 

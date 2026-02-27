@@ -16,7 +16,7 @@ async def test_runner_search_execution():
     state: AgentState = {
         "messages": [HumanMessage(content="HKUST-1")],
         "original_query": "HKUST-1",
-        "plan": ["search_mofs"],
+        "plan": ["fetch_structure"],
         "current_step": 0,
         "tool_outputs": {},
         "review_feedback": "",
@@ -28,35 +28,36 @@ async def test_runner_search_execution():
 
     # Check results
     assert result["current_step"] == 1
-    assert "step_0_search_mofs" in result["tool_outputs"]
-    output = result["tool_outputs"]["step_0_search_mofs"]
+    assert "step_0_fetch_structure" in result["tool_outputs"]
+    output = result["tool_outputs"]["step_0_fetch_structure"]
     assert "HKUST-1" in str(output)
 
 
 @pytest.mark.asyncio
 async def test_runner_multi_step_workflow():
-    """Test runner with multi-step workflow via MCP (search -> optimize)"""
-    # Create state
+    """Test runner with multi-step workflow via MCP (fetch -> optimize, Pattern A)"""
+    # Create state — QMOF-ID workflow: fetch_structure already returns atoms_dict,
+    # so parse_structure is not needed (Pattern A).
     state: AgentState = {
         "messages": [HumanMessage(content="Find and optimize HKUST-1")],
         "original_query": "HKUST-1",
-        "plan": ["search_mofs", "optimize_structure"],
+        "plan": ["fetch_structure", "optimize_geometry"],
         "current_step": 0,
         "tool_outputs": {},
         "review_feedback": "",
         "is_plan_approved": True,
     }
 
-    # Execute step 1: search
+    # Execute step 1: fetch
     state = await runner_node(state)
     assert state["current_step"] == 1
-    assert "step_0_search_mofs" in state["tool_outputs"]
+    assert "step_0_fetch_structure" in state["tool_outputs"]
 
     # Execute step 2: optimize
     state = await runner_node(state)
     assert state["current_step"] == 2
-    assert "step_1_optimize_structure" in state["tool_outputs"]
+    assert "step_1_optimize_geometry" in state["tool_outputs"]
 
     # Check optimization result
-    opt_result = state["tool_outputs"]["step_1_optimize_structure"]
+    opt_result = state["tool_outputs"]["step_1_optimize_geometry"]
     assert "Successfully" in str(opt_result)

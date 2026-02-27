@@ -6,6 +6,7 @@ import os
 import asyncio
 import json
 import logging
+import re
 from typing import Dict, Any, List
 # Bohr Agent SDK imports
 from dp.agent.client.mcp_client import MCPClient
@@ -140,72 +141,156 @@ def _prepare_tool_args(
     """
     original_query = state.get("original_query", "")
 
-    # 1. Search tools
-    if tool_name == "search_mofs":
-        return {"query": original_query, "query_string": original_query}
+    # 1. Fetch structure tool
+    if tool_name == "fetch_structure":
+        mof_id = _extract_mof_id(original_query) or original_query
+        return {"mof_id": mof_id}
 
-    # 2. Optimization tools
-    elif tool_name == "optimize_structure":
-        # Try to find a CIF path
-        cif_path = _find_cif_filepath(tool_outputs)
-        
-        # Try to find a MOF name as fallback
-        mof_name = "Unknown MOF"
-        for key, val in tool_outputs.items():
-            if isinstance(val, list) and len(val) > 0:
-                if isinstance(val[0], dict):
-                    mof_name = val[0].get("name") or val[0].get("mof_name") or mof_name
-            elif isinstance(val, dict):
-                mof_name = val.get("name") or val.get("mof_name") or mof_name
-        
-        return {
-            "cif_filepath": cif_path,
-            "filepath": cif_path,
-            "name": mof_name,
-            "mof_name": mof_name
-        }
+    # 2. Parse structure tool
+    elif tool_name == "parse_structure":
+        # Prefer an explicit file path, then inline CIF, then inline XYZ, then raw query.
+        data = (
+            _extract_existing_structure_path(original_query)
+            or _extract_cif_content(original_query)
+            or _extract_xyz_content(original_query)
+            or original_query
+        )
+        return {"data": data}
 
-    # 3. Energy tools
-    elif tool_name == "calculate_energy":
-        cif_path = _find_cif_filepath(tool_outputs, prefer_optimized=True)
-        return {
-            "cif_filepath": cif_path,
-            "filepath": cif_path,
-            "data": cif_path
-        }
+    # 3. Optimization tools
+    elif tool_name == "optimize_geometry":
+        atoms_dict = _find_latest_atoms_dict(tool_outputs, prefer_optimized=False)
+        if atoms_dict is None:
+            logger.warning("⚠️  optimize_geometry: no atoms_dict found in prior tool outputs")
+        payload: Dict[str, Any] = {}
+        if atoms_dict is not None:
+            payload["atoms_dict"] = atoms_dict
+        return payload
+
+    # 4. Static energy/force tools
+    elif tool_name == "static_calculation":
+        # Prefer optimized atoms if available, else parsed atoms.
+        atoms_dict = _find_latest_atoms_dict(tool_outputs, prefer_optimized=True)
+        if atoms_dict is None:
+            logger.warning("⚠️  static_calculation: no atoms_dict found in prior tool outputs")
+        payload: Dict[str, Any] = {}
+        if atoms_dict is not None:
+            payload["atoms_dict"] = atoms_dict
+        return payload
+
+    # 5. Bandgap prediction tool
+    elif tool_name == "predict_bandgap":
+        atoms_dict = _find_latest_atoms_dict(tool_outputs, prefer_optimized=True)
+        if atoms_dict is None:
+            logger.warning("⚠️  predict_bandgap: no atoms_dict found in prior tool outputs")
+        payload: Dict[str, Any] = {}
+        if atoms_dict is not None:
+            payload["atoms_dict"] = atoms_dict
+        return payload
 
     else:
         return {}
 
 
-def _find_cif_filepath(tool_outputs: Dict[str, Any], prefer_optimized: bool = False) -> str:
-    """
-    Find a CIF filepath in the tool outputs.
-    """
+def _find_latest_atoms_dict(tool_outputs: Dict[str, Any], prefer_optimized: bool) -> Any:
+    """Find the most recent atoms_dict from parse/optimization outputs."""
 
-    optimized_path = None
-    original_path = None
+    def _step_index(k: str) -> int:
+        m = re.match(r"step_(\d+)_", k)
+        return int(m.group(1)) if m else -1
 
-    # Search through outputs in order
-    for key in sorted(tool_outputs.keys()):
+    # Sort by numeric step index (descending) so step_10 sorts after step_9
+    for key in sorted(tool_outputs.keys(), key=_step_index, reverse=True):
         output = tool_outputs[key]
+        if not isinstance(output, dict):
+            continue
 
-        if isinstance(output, list) and len(output) > 0 and isinstance(output[0], dict):
-            # Take first result from search if it matches
-            first = output[0]
-            if "cif_filepath" in first:
-                original_path = first["cif_filepath"]
-            if "optimized_cif_filepath" in first:
-                optimized_path = first["optimized_cif_filepath"]
+        if prefer_optimized and "optimized_atoms_dict" in output and output.get("optimized_atoms_dict"):
+            return output.get("optimized_atoms_dict")
+        if "atoms_dict" in output and output.get("atoms_dict"):
+            return output.get("atoms_dict")
 
-        elif isinstance(output, dict):
-            if "optimized_cif_filepath" in output:
-                optimized_path = output["optimized_cif_filepath"]
+    return None
 
-            if "cif_filepath" in output and not output.get("error"):
-                original_path = output["cif_filepath"]
 
-    if prefer_optimized and optimized_path:
-        return optimized_path
+def _extract_mof_id(text: str) -> str | None:
+    """Extract a QMOF ID (e.g. qmof-8b5bb88) from user text."""
+    match = re.search(r"\bqmof-[a-f0-9]+\b", text, re.IGNORECASE)
+    return match.group(0) if match else None
 
-    return optimized_path or original_path
+
+def _extract_cif_content(text: str) -> str | None:
+    """Extract an inline CIF block from mixed user text.
+
+    A CIF data block always begins with 'data_<name>' at the start of a line.
+    Lines are kept while they match CIF patterns; trailing English sentences are dropped.
+    """
+    # Find the start of a CIF data block
+    start = re.search(r"(?m)^[ \t]*(data_\w)", text)
+    if not start:
+        return None
+
+    cif_raw = text[start.start():].strip()
+    lines = cif_raw.splitlines()
+
+    # A line belongs to the CIF block if it matches any of these patterns:
+    _cif_line = re.compile(
+        r"""^\s*(?:
+            data_\w       |   # block header
+            loop_         |   # loop declaration
+            _[a-z_]       |   # CIF tag  (_atom_site_label, etc.)
+            ['"]          |   # quoted value
+            \s*$              # blank line
+        )""",
+        re.VERBOSE,
+    )
+    # Also match atom-site data rows: label + element + 3 numbers
+    _atom_row = re.compile(r"^\s*\w+\s+[A-Za-z]{1,2}\s+[-\d.]+\s+[-\d.]+\s+[-\d.]")
+
+    last_cif = -1
+    for i, line in enumerate(lines):
+        if _cif_line.match(line) or _atom_row.match(line):
+            last_cif = i
+
+    if last_cif < 0:
+        return None
+    return "\n".join(lines[: last_cif + 1]).strip()
+
+
+def _extract_xyz_content(text: str) -> str | None:
+    """Extract an inline XYZ block from mixed user text.
+
+    XYZ format: line 1 is the atom count (bare integer), line 2 is a free
+    comment, lines 3..N+2 are 'Element  x  y  z' rows.
+    """
+    lines = text.splitlines()
+    _atom_row = re.compile(r"^\s*[A-Za-z]{1,2}\s+[-\d.]+\s+[-\d.]+\s+[-\d.]+\s*$")
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped.isdigit():
+            continue
+        n_atoms = int(stripped)
+        if n_atoms <= 0:
+            continue
+        # Need comment line (i+1) + n_atoms data lines (i+2 … i+1+n_atoms)
+        end = i + 2 + n_atoms
+        if end > len(lines):
+            continue
+        atom_lines = lines[i + 2 : end]
+        if all(_atom_row.match(l) for l in atom_lines):
+            return "\n".join(lines[i:end]).strip()
+
+    return None
+
+
+def _extract_existing_structure_path(text: str) -> str | None:
+    """Extract a structure file path from user text (best-effort).
+
+    Does not check whether the path exists locally — the file may live on a
+    remote server (e.g. Bohrium) and only needs to be valid on that side.
+    """
+    # Common structure formats we support downstream
+    pattern = r"(/[^\s]+\.(?:cif|xyz|vasp|poscar|POSCAR))"
+    match = re.search(pattern, text)
+    return match.group(1) if match else None
