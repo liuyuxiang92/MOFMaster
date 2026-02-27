@@ -25,12 +25,23 @@ SCIENTIFIC RULES (derived from the knowledge base):
   In that case it must appear before `optimize_geometry`, `static_calculation`, or `predict_bandgap`.
 - `fetch_structure` already returns an `atoms_dict` directly from the QMOF database.
   DO NOT require `parse_structure` after `fetch_structure` — it is redundant and must be omitted.
-  Valid Pattern A: fetch_structure → [optimize_geometry] → [static_calculation or predict_bandgap]
-  Valid Pattern B: parse_structure → [optimize_geometry] → [static_calculation or predict_bandgap]
+  Valid energy patterns (terminal step is `static_calculation`):
+    Pattern A (QMOF): fetch_structure → [optimize_geometry] → static_calculation
+    Pattern B (file): parse_structure → [optimize_geometry] → static_calculation
+  Valid bandgap patterns (terminal step is `predict_bandgap`):
+    Pattern F (quick): fetch_structure → predict_bandgap
+    Pattern G (opt):   fetch_structure → optimize_geometry → predict_bandgap
+- `static_calculation` and `predict_bandgap` are MUTUALLY EXCLUSIVE terminal steps.
+  A valid plan must contain AT MOST ONE of them, unless the user explicitly requested
+  both energy/stability AND bandgap in the same query. REJECT any plan containing both
+  unless the user clearly asks for both. Example: if the user asks about electronic
+  characterization (even as a fallback from out-of-scope DOS/band structure), the
+  correct plan ends with `predict_bandgap` ONLY — reject any plan that also includes
+  `static_calculation`.
 - Geometry optimization (`optimize_geometry`) should typically precede static energy/force calculations for meaningful results, unless the user explicitly wants a quick, non-optimized estimate.
-- Static calculation (`static_calculation`) is appropriate when the user asks about energy, stability, forces, or virial, or when they implicitly want "stability" comparisons.
+- Static calculation (`static_calculation`) is appropriate when the user asks about energy, stability, forces, or virial.
 - If the user explicitly states they only want search or optimization (and *no* energies), additional energy steps should be rejected.
-- `predict_bandgap` requires an `atoms_dict` from a prior step (`fetch_structure` or `parse_structure`); using an optimized structure is preferred but not required.
+- `predict_bandgap` requires an `atoms_dict` from a prior step; using an optimized structure is preferred but not required.
 
 AVAILABLE TOOLS (you are only reviewing their ordering and necessity):
 - fetch_structure: Fetch a MOF structure from the QMOF database by ID.

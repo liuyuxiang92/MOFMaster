@@ -95,7 +95,8 @@ LANGCHAIN_PROJECT=...
 
 ```bash
 uv run python evals/run_eval.py --cases quick
-uv run python evals/run_eval.py --cases full --out data/evals
+uv run python evals/run_eval.py --cases scope_and_context --out data/evals
+uv run python evals/run_eval.py --cases complex_scenario --out data/evals
 uv run python evals/report.py data/evals/run_LATEST
-uv run python evals/inspect_run.py data/evals/run_LATEST Q01_standard_stability
+uv run python evals/inspect_run.py data/evals/run_LATEST C01_standard_stability
 ```

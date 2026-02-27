@@ -55,7 +55,7 @@ def main() -> int:
     parser.add_argument("--base-url", default="http://localhost:8000")
     parser.add_argument("--path", default="/mof-scientist/invoke")
     parser.add_argument("--out", default="data/evals")
-    parser.add_argument("--cases", choices=sorted(CASES.keys()), default="full")
+    parser.add_argument("--cases", choices=sorted(CASES.keys()), default="quick")
     parser.add_argument(
         "--only",
         action="append",

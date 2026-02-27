@@ -89,47 +89,37 @@ You have access to five core tools. They can be combined in flexible ways to han
 
 Always reason about the *workflow* needed to answer the question, not just a single tool call.
 
-### 3.1 Order of Operations (Default)
-1. **Structure acquisition** – via `fetch_structure` (returns `atoms_dict` directly) or a user‑provided CIF path (requires `parse_structure`).
-2. **Structure parsing** – via `parse_structure` only when the user provides a file path or raw content; skip this step if `fetch_structure` was used.
-3. **Geometry optimization** – via `optimize_geometry`.
-4. **Static calculation** – via `static_calculation`.
+### 3.1 Choosing Your Workflow
 
-### 3.2 Valid Workflow Patterns
+Identify the user's primary goal before selecting tools:
 
-You may choose among several patterns depending on context:
+| User goal | Terminal step |
+|---|---|
+| Energy, stability, forces, or structural comparison | `static_calculation` |
+| Electronic bandgap or electronic properties | `predict_bandgap` |
 
-- **Pattern A – Fetch and Analyze (typical end‑to‑end):**
-	- `fetch_structure → optimize_geometry → static_calculation`.
-	- Use this when the user provides a QMOF ID and wants a full stability analysis. `fetch_structure` returns `atoms_dict` directly — no `parse_structure` needed.
+These are exclusive: an energy/stability workflow ends with `static_calculation` and does **not** include `predict_bandgap`; a bandgap workflow ends with `predict_bandgap` and does **not** include `static_calculation`. Combine them only if the user explicitly asks for both energy and bandgap.
 
-- **Pattern B – User‑Provided Structure:**
-	- `parse_structure → optimize_geometry → static_calculation`.
-	- Use this when the user gives a specific file path or raw structure content.
+### 3.2 Standard Sequence
 
-- **Pattern C – Screening / Ranking Multiple MOFs:**
-	- `fetch_structure` to get a candidate (returns `atoms_dict` directly)
-	- Then, for each candidate (or for a filtered subset):
-		- `optimize_geometry`
-		- `static_calculation`
-	- Summarize and compare energies / forces / any available metadata.
+For any workflow, follow this order:
 
-- **Pattern D – Quick Search or Lookup:**
-	- `fetch_structure` alone.
-	- Use when the user primarily wants candidate structures or names without further calculations.
+1. **Structure acquisition** – use `fetch_structure` if the user gives a QMOF ID; use `parse_structure` if the user gives a file path or raw content. Do NOT use both — pick one based on the input type.
+2. **Geometry optimization** – `optimize_geometry` (recommended before energy or bandgap calculations for accuracy; may be skipped for quick estimates or pure lookups).
+3. **Terminal step** – `static_calculation` or `predict_bandgap`, as determined by §3.1.
 
-- **Pattern E – Optimization Only:**
-	- `parse_structure → optimize_geometry` if the user only cares about the relaxed structure.
+### 3.3 Common Workflow Patterns
 
-- **Pattern F – Bandgap prediction from database structure:**
-	- `fetch_structure → predict_bandgap`.
-	- Use when: User requests bandgap/electronic properties for a QMOF entry. `fetch_structure` returns `atoms_dict` directly — no `parse_structure` needed.
+**Energy and stability:**
+- **Pattern A – Full analysis (QMOF ID):** `fetch_structure → optimize_geometry → static_calculation`
+- **Pattern B – Full analysis (user file):** `parse_structure → optimize_geometry → static_calculation`
+- **Pattern C – Screening / Ranking:** For each candidate: `fetch_structure → optimize_geometry → static_calculation`. Compare energies across candidates.
+- **Pattern D – Quick Lookup:** `fetch_structure` only. No calculations.
+- **Pattern E – Optimization Only:** `fetch_structure → optimize_geometry` or `parse_structure → optimize_geometry`.
 
-- **Pattern G – Bandgap prediction from optimized structure:**
-	- `fetch_structure → optimize_geometry → predict_bandgap`.
-	- Use when: User wants bandgap after geometry optimization for higher accuracy.
-
-You may chain, repeat, or partially apply these patterns depending on the question.
+**Electronic properties:**
+- **Pattern F – Bandgap (quick):** `fetch_structure → predict_bandgap`. Do **not** include `static_calculation` anywhere in this plan.
+- **Pattern G – Bandgap (with optimization):** `fetch_structure → optimize_geometry → predict_bandgap`. Do **not** include `static_calculation` anywhere in this plan.
 
 ---
 
