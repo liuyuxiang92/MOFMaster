@@ -148,9 +148,13 @@ def _prepare_tool_args(
 
     # 2. Parse structure tool
     elif tool_name == "parse_structure":
-        # Use the file path from the user's query, or fall back to the raw query string.
-        user_path = _extract_existing_structure_path(original_query)
-        data = user_path or original_query
+        # Prefer an explicit file path, then inline CIF, then inline XYZ, then raw query.
+        data = (
+            _extract_existing_structure_path(original_query)
+            or _extract_cif_content(original_query)
+            or _extract_xyz_content(original_query)
+            or original_query
+        )
         return {"data": data}
 
     # 3. Optimization tools
@@ -213,6 +217,71 @@ def _extract_mof_id(text: str) -> str | None:
     """Extract a QMOF ID (e.g. qmof-8b5bb88) from user text."""
     match = re.search(r"\bqmof-[a-f0-9]+\b", text, re.IGNORECASE)
     return match.group(0) if match else None
+
+
+def _extract_cif_content(text: str) -> str | None:
+    """Extract an inline CIF block from mixed user text.
+
+    A CIF data block always begins with 'data_<name>' at the start of a line.
+    Lines are kept while they match CIF patterns; trailing English sentences are dropped.
+    """
+    # Find the start of a CIF data block
+    start = re.search(r"(?m)^[ \t]*(data_\w)", text)
+    if not start:
+        return None
+
+    cif_raw = text[start.start():].strip()
+    lines = cif_raw.splitlines()
+
+    # A line belongs to the CIF block if it matches any of these patterns:
+    _cif_line = re.compile(
+        r"""^\s*(?:
+            data_\w       |   # block header
+            loop_         |   # loop declaration
+            _[a-z_]       |   # CIF tag  (_atom_site_label, etc.)
+            ['"]          |   # quoted value
+            \s*$              # blank line
+        )""",
+        re.VERBOSE,
+    )
+    # Also match atom-site data rows: label + element + 3 numbers
+    _atom_row = re.compile(r"^\s*\w+\s+[A-Za-z]{1,2}\s+[-\d.]+\s+[-\d.]+\s+[-\d.]")
+
+    last_cif = -1
+    for i, line in enumerate(lines):
+        if _cif_line.match(line) or _atom_row.match(line):
+            last_cif = i
+
+    if last_cif < 0:
+        return None
+    return "\n".join(lines[: last_cif + 1]).strip()
+
+
+def _extract_xyz_content(text: str) -> str | None:
+    """Extract an inline XYZ block from mixed user text.
+
+    XYZ format: line 1 is the atom count (bare integer), line 2 is a free
+    comment, lines 3..N+2 are 'Element  x  y  z' rows.
+    """
+    lines = text.splitlines()
+    _atom_row = re.compile(r"^\s*[A-Za-z]{1,2}\s+[-\d.]+\s+[-\d.]+\s+[-\d.]+\s*$")
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped.isdigit():
+            continue
+        n_atoms = int(stripped)
+        if n_atoms <= 0:
+            continue
+        # Need comment line (i+1) + n_atoms data lines (i+2 … i+1+n_atoms)
+        end = i + 2 + n_atoms
+        if end > len(lines):
+            continue
+        atom_lines = lines[i + 2 : end]
+        if all(_atom_row.match(l) for l in atom_lines):
+            return "\n".join(lines[i:end]).strip()
+
+    return None
 
 
 def _extract_existing_structure_path(text: str) -> str | None:
